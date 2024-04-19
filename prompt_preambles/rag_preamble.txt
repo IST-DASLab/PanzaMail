@@ -1,0 +1,4 @@
+Extract specific information from these previous e-mails only if it is relevant to the current e-mail you have to write.
+
+Previous e-mails:
+{rag_context}

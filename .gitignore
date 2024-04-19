@@ -1,0 +1,9 @@
+README.html
+
+__pycache__/
+
+checkpoints/
+results/
+wandb/
+
+*.log
