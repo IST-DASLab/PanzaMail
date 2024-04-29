@@ -7,16 +7,29 @@ current_user=$(whoami)
 export DATA_PATH=${PANZA_DATA_DIR}/train.jsonl
 
 # hyper-parameters with default values
-export MODEL_PRECISION=bf16 # bf16 or fp32
+#export MODEL_PRECISION=bf16 # bf16 or fp32
 export BASE_SAVE_PATH=${PANZA_CHECKPOINTS} # where to store the model
 export NUM_EPOCHS=3
 export WARMUP=20 # the learning rate warmup (batches)
 export BS=8
 export PER_DEVICE_BS=1
 export SEED=${PANZA_SEED}
-export LR=1e-6 # learning rate
 
-export WANDB_PROJECT="panza-${current_user}-test"
+if [[ ${MODEL_TYPE} == llama3 ]]; then 
+    export LR=1e-5 # learning rate
+elif [[ ${MODEL_TYPE} == mistralv2 ]]; then 
+    export LR=1e-5 # learning rate
+else
+    echo "Model type ${MODEL_TYPE} not recognized! Panza only works with mistralv2 and llama3 models. Exiting."
+    exit
+fi
+
+echo "Using Learning Rate ${LR} for ${MODEL_TYPE} model"
+
+export WANDB_PROJECT="panza-${current_user}"
+
+export PRETRAINED=${PANZA_GENERATIVE_MODEL}
+export CONFIG=${PANZA_FINETUNE_CONFIGS}/fft_panza.yaml
 
 # take all the input arguments and put them in environment variables
 # this could override the hyper-parameters defined above
@@ -30,6 +43,10 @@ do
    export "$KEY"="$VALUE"
 done
 
+# some post-processing on the inputs
+export MAX_DURATION=${NUM_EPOCHS}ep
+export RUN_NAME=panza_${MODEL_TYPE}_${MODEL_PRECISION}-bs${BS}-fft-lr${LR}-epochs${NUM_EPOCHS}-wu${WARMUP}-seed${SEED}-${PREAMBLE_STR}-$RANDOM
+
 if [ "$PANZA_FINETUNE_WITH_PREAMBLE" = 1 ]; then
   PREAMBLE_STR="PREAMBLE"
   PREPROCESSING_FN=panza.finetuning.preprocessing:panza_preprocessing_function_train_with_preamble
@@ -38,17 +55,21 @@ else
   PREPROCESSING_FN=panza.finetuningpreprocessing:panza_preprocessing_function
 fi
 
-# some post-processing on the inputs
-export PRETRAINED=${PANZA_GENERATIVE_MODEL}
-export MAX_DURATION=${NUM_EPOCHS}ep
-export CONFIG=${PANZA_FINETUNE_CONFIGS}/mistral_7b_fft_panza.yaml
-export RUN_NAME=panza_${MODEL_PRECISION}-bs${BS}-fft-lr${LR}-epochs${NUM_EPOCHS}-wu${WARMUP}-seed${SEED}-${PREAMBLE_STR}-$RANDOM
-
 # create directories to save the models
 mkdir -p ${BASE_SAVE_PATH}/models/
 
 TEMP_FILE=$(mktemp)
 
+if [ "$MODEL_PRECISION" = "bf16" ]; then
+  export HF_SAVE_PRECISION=bfloat16
+elif [ "$MODEL_PRECISION" = "fp32" ]; then
+  export HF_SAVE_PRECISION=float32 
+else
+  echo "Unknown model precision $MODEL_PRECISION"
+  exit 1
+fi
+
+export WANDB_DISABLED=${PANZA_WANDB_DISABLED}
 TRAIN_SCRIPT=${PANZA_WORKSPACE}/src/panza/finetuning/train.py
 composer ${TRAIN_SCRIPT} \
     ${CONFIG} \
@@ -65,6 +86,7 @@ composer ${TRAIN_SCRIPT} \
     model.weight_bias_dtype=${MODEL_PRECISION} \
     global_seed=${SEED} \
     seed=${SEED} \
+    callbacks.hf_checkpointer.precision=${HF_SAVE_PRECISION} \
     hf_save_path=${BASE_SAVE_PATH}/models/ 2>&1 | tee "$TEMP_FILE"
 
 # Extract the wandb run ID from the temp file
@@ -72,34 +94,43 @@ WANDB_RUN_ID=$(grep -o 'https://wandb.ai/[^ ]*/runs/[^ ]*' "$TEMP_FILE" | awk -F
 
 rm "$TEMP_FILE"
 
+# move the checkpoint (saved by llm-foundry) to the correct directory
+export RUN_SAVE_PATH=${BASE_SAVE_PATH}/models/${RUN_NAME}
+export LAST_SAVE_DIR_NAME=$(ls -t ${RUN_SAVE_PATH}/huggingface | head -n 1)
+mv ${RUN_SAVE_PATH}/huggingface/${LAST_SAVE_DIR_NAME}/* ${RUN_SAVE_PATH}
+rm -rf ${RUN_SAVE_PATH}/huggingface
+
 echo "find the finetuned model at ${BASE_SAVE_PATH}/models/${RUN_NAME}"
 
 if [ -z "$WANDB_RUN_ID" ]; then
-  echo "Failed to extract wandb run ID"
+  echo "No wandb run ID found."
 else
   echo "Extracted wandb run ID: $WANDB_RUN_ID"
-  # Running BLEU evaluation
-  EVAL_SCRIPT=${PANZA_WORKSPACE}/src/panza/evaluation/evaluate_bleu_score.py
-  python ${EVAL_SCRIPT} \
+fi
+
+# Running BLEU evaluation
+EVAL_SCRIPT=${PANZA_WORKSPACE}/src/panza/evaluation/evaluate_bleu_score.py
+python ${EVAL_SCRIPT} \
   --model=${BASE_SAVE_PATH}/models/${RUN_NAME} \
   --system-preamble=${PANZA_SYSTEM_PREAMBLE_PATH} \
   --user-preamble=${PANZA_USER_PREAMBLE_PATH} \
   --rag-preamble=${PANZA_RAG_PREAMBLE_PATH} \
   --golden=${PANZA_DATA_DIR}/test.jsonl \
+  --batch-size=${PANZA_EVALUATION_BATCH_SIZE} \
   --wandb-run-id=${WANDB_RUN_ID}
 
-  # Running BLEU evaluation with RAG
-  python ${EVAL_SCRIPT} \
+# Running BLEU evaluation with RAG
+python ${EVAL_SCRIPT} \
   --model=${BASE_SAVE_PATH}/models/${RUN_NAME} \
   --system-preamble=${PANZA_SYSTEM_PREAMBLE_PATH} \
   --user-preamble=${PANZA_USER_PREAMBLE_PATH} \
   --rag-preamble=${PANZA_RAG_PREAMBLE_PATH} \
   --golden=${PANZA_DATA_DIR}/test.jsonl \
+  --batch-size=${PANZA_EVALUATION_BATCH_SIZE} \
   --wandb-run-id=${WANDB_RUN_ID} \
   --embedding-model=${PANZA_EMBEDDING_MODEL} \
   --db-path=${PANZA_DATA_DIR} \
   --index-name=${PANZA_USERNAME} \
   --use-rag
 
-  echo "find the finetuned model at ${BASE_SAVE_PATH}/models/${RUN_NAME}"
-fi
+echo "find the finetuned model at ${BASE_SAVE_PATH}/models/${RUN_NAME}"

@@ -21,7 +21,7 @@ def main():
         torch.set_num_threads(args.nthreads)
 
     print("Loading model ", args.model)
-    model, tokenizer = base_inference.load_model_and_tokenizer(args.model, args.device, args.dtype)
+    model, tokenizer = base_inference.load_model_and_tokenizer(args.model, args.device, args.dtype, load_in_4bit=args.load_in_4bit)
 
     if args.use_rag:
         embeddings_model = rag.get_embeddings_model(args.embedding_model)
@@ -38,8 +38,8 @@ def main():
             print("Exiting...")
             break
 
-        prompt, output = base_inference.run_inference(
-            instruction=user_input,
+        prompts, outputs = base_inference.run_inference(
+            instructions=[user_input],
             model=model,
             tokenizer=tokenizer,
             system_preamble=system_preamble,
@@ -57,8 +57,8 @@ def main():
             device=args.device,
         )
 
-        print("Processed input:", prompt)
-        print(output)
+        print("Processed input:", prompts[0])
+        print("Generated email", outputs[0])
 
 
 if __name__ == "__main__":

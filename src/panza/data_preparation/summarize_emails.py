@@ -1,57 +1,87 @@
 import argparse
 import json
 import os
+import sys
 import time
 from typing import Dict, List, Text
 
 import torch
 from tqdm import tqdm
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
-MDL = "mistralai/Mistral-7B-Instruct-v0.2"
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+
+from panza.utils import prompting
+
+sys.path.pop(0)
+
+MDL = os.environ.get("PANZA_GENERATIVE_MODEL")
 TEMP = 0.7
 TOP_P = 0.7
 TOP_K = 50
-MAX_TOKENS = 10000
 
 
 class LLMSummarizer:
-    def __init__(
-        self, model, dtype, temperature, top_k, top_p, max_tokens, summarization_prompt
-    ) -> None:
+    def __init__(self, model, dtype, temperature, top_k, top_p, summarization_prompt, load_in_4bit) -> None:
         self.device = "cuda"
+
+        if load_in_4bit:
+            quant_config = BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_compute_dtype=dtype,
+                bnb_4bit_use_double_quant=True,
+                bnb_4bit_quant_type='nf4',
+            )
+        else:
+            quant_config = None
+        
         self.model = AutoModelForCausalLM.from_pretrained(
-            model, torch_dtype=dtype, device_map=self.device
+            model, torch_dtype=dtype, device_map=self.device, quantization_config=quant_config
         )
-        self.tokenizer = AutoTokenizer.from_pretrained(model)
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            model, model_max_length=self.model.config.max_position_embeddings
+        )
+        self.tokenizer.padding_side = "left"
+        self.tokenizer.pad_token = self.tokenizer.eos_token
         self.summarization_prompt = summarization_prompt
+
+        _, self.prompt_end_wrapper, _, self.response_end_wrapper = (
+            prompting.get_model_special_tokens(self.model.name_or_path)
+        )
 
         # Save sampling parameters
         self.temperature = temperature
         self.top_k = top_k
         self.top_p = top_p
-        self.max_tokens = max_tokens
 
     def prepare_batch_for_inference(self, emails: List[Dict]) -> List[Text]:
         batch_with_prompt = []
         for item in emails:
             prompt_with_email = self.summarization_prompt.format(email=item["email"])
-            batch_with_prompt.append({"role": "user", "content": prompt_with_email})
+            batch_with_prompt.append([{"role": "user", "content": prompt_with_email}])
         return batch_with_prompt
 
     def run_inference(self, emails: List[Dict]) -> List[Dict]:
         batch = self.prepare_batch_for_inference(emails)
 
-        model_inputs = self.tokenizer.apply_chat_template(batch, return_tensors="pt")
+        model_inputs = self.tokenizer.apply_chat_template(
+            batch,
+            return_tensors="pt",
+            add_generation_prompt=True,
+            padding=True,
+            truncation=True,
+            return_dict=True,
+        )
         model_inputs = model_inputs.to(self.device)
 
         generated_ids = self.model.generate(
-            model_inputs,
-            max_new_tokens=self.max_tokens,
+            **model_inputs,
+            max_new_tokens=1024,
             do_sample=True,
             temperature=self.temperature,
             top_k=self.top_k,
             top_p=self.top_p,
+            pad_token_id=self.tokenizer.pad_token_id,
         )
 
         outputs = self.tokenizer.batch_decode(generated_ids)
@@ -59,8 +89,8 @@ class LLMSummarizer:
         # Extract generated text
         summaries = []
         for output in outputs:
-            output = output.split("[/INST]")[-1]
-            output = output.split("</s>")[0]
+            output = output.split(self.prompt_end_wrapper)[-1]
+            output = output.split(self.response_end_wrapper)[0]
             output = output.strip()
             summaries.append(output)
 
@@ -84,7 +114,7 @@ def generate_synthetic_instructions(emails: List[Dict], summarizer: LLMSummarize
             )
             continue
 
-        instruction = generated_text.split("Instruction: ", 1)[1]
+        instruction = generated_text.split(keyword, 1)[1]
         summarized_emails.append(
             {
                 "email": emails[j]["email"],
@@ -102,6 +132,9 @@ def main():
     )
     parser.add_argument("--path-to-emails", help="Path to the cleaned emails")
     parser.add_argument("--prompt-file", help="A path to file with prompt text")
+    parser.add_argument("--batch-size", type=int, help="Inference batch size")
+    parser.add_argument("--load-in-4bit", default=False, action='store_true', help="Wheather to load the model in 4bit precision (BNB)")
+    parser.add_argument("--fp32", default=False, action='store_true', help="Whether to use FP32 precision for computation")
     args = parser.parse_args()
 
     assert args.path_to_emails.endswith(
@@ -115,29 +148,28 @@ def main():
         summarization_prompt = file.read()
 
     print(f"--> Reading emails from: {args.path_to_emails}")
-    print(f"--> Processing with batch_size 1 and prompt = {summarization_prompt}")
+    print(f"--> Processing with batch_size {args.batch_size} and prompt = {summarization_prompt}")
     print(
         f"--> params for sampling:"
         f"\t model = {MDL}"
         f"\t temperature = {TEMP}"
         f"\t top_p = {TOP_P}"
-        f"\t max_tokens = {MAX_TOKENS}"
     )
 
     # Read emails
     with open(args.path_to_emails, "r") as f:
         lines = f.readlines()
-        json_lines = [json.loads(line) for line in lines]
+        json_lines = [json.loads(line.strip(',')) for line in lines]
         print(f"--> # emails = {len(json_lines)}")
 
     summarizer = LLMSummarizer(
         model=MDL,
-        dtype=torch.bfloat16,
+        dtype=torch.float32 if args.fp32 else torch.bfloat16,
         temperature=TEMP,
         top_p=TOP_P,
         top_k=TOP_K,
-        max_tokens=MAX_TOKENS,
         summarization_prompt=summarization_prompt,
+        load_in_4bit=args.load_in_4bit
     )
 
     # Generate synthetic instructions
@@ -145,9 +177,10 @@ def main():
     num_processed_emails = 0
     start_time = time.time()
     with open(path_for_outputs, "w") as f:
-        for i in tqdm(range(0, len(json_lines), 1)):
+        for i in tqdm(range(0, len(json_lines), args.batch_size)):
+            # TODO(armand): Fix this print for batched inference
             print(f"--> Processing batch {i}/{len(json_lines)}")
-            batch = json_lines[i : i + 1]
+            batch = json_lines[i : i + args.batch_size]
             summarized_emails = generate_synthetic_instructions(batch, summarizer)
             num_processed_emails += len(summarized_emails)
 

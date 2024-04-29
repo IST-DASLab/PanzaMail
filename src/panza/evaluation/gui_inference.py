@@ -16,8 +16,8 @@ sys.path.pop(0)
 def get_execute(model, tokenizer, system_preamble, user_preamble, rag_preamble, db, args):
 
     def execute(prompt):
-        prompt, output = base_inference.run_inference(
-            instruction=prompt,
+        prompts, outputs = base_inference.run_inference(
+            instructions=[prompt],
             model=model,
             tokenizer=tokenizer,
             system_preamble=system_preamble,
@@ -34,11 +34,9 @@ def get_execute(model, tokenizer, system_preamble, user_preamble, rag_preamble, 
             top_p=args.top_p,
             device=args.device,
         )
-        cleaned = output.split("[/INST]")[-1].strip()
-        cleaned = cleaned.split("</s>")[0]
-        print("Prompt\n", prompt)
-        print("Output\n", cleaned)
-        yield cleaned
+        print("Prompt\n", prompts[0])
+        print("Output\n", outputs[0])
+        yield outputs[0]
 
     return execute
 
@@ -55,7 +53,7 @@ def main():
         torch.set_num_threads(args.nthreads)
 
     print("Loading model ", args.model)
-    model, tokenizer = base_inference.load_model_and_tokenizer(args.model, args.device, args.dtype)
+    model, tokenizer = base_inference.load_model_and_tokenizer(args.model, args.device, args.dtype, load_in_4bit=args.load_in_4bit)
 
     if args.use_rag:
         embeddings_model = rag.get_embeddings_model(args.embedding_model)

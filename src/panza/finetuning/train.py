@@ -11,19 +11,9 @@ from typing import Any, Dict, List, Optional, Union
 
 import torch
 from torch.distributed.fsdp import FullyShardedDataParallel as FSDP, StateDictType, FullStateDictConfig
-from composer import Trainer
-from composer.core.callback import Callback
-from composer.loggers import MosaicMLLogger
-from composer.loggers.mosaicml_logger import (MOSAICML_ACCESS_TOKEN_ENV_VAR,
-                                              MOSAICML_PLATFORM_ENV_VAR)
-from composer.profiler import (JSONTraceHandler, Profiler, TraceHandler,
-                               cyclic_schedule)
-from composer.utils import dist, get_device, reproducibility
-from omegaconf import DictConfig, ListConfig
-from omegaconf import OmegaConf as om
-from rich.traceback import install
 
 from composer.optim import DecoupledAdamW
+
 from composer.metrics.nlp import (InContextLearningCodeEvalAccuracy,
                                   InContextLearningLMAccuracy,
                                   InContextLearningLMExpectedCalibrationError,
@@ -31,28 +21,45 @@ from composer.metrics.nlp import (InContextLearningCodeEvalAccuracy,
                                   InContextLearningMultipleChoiceAccuracy,
                                   InContextLearningQAAccuracy,
                                   LanguageCrossEntropy, LanguagePerplexity)
-from llmfoundry.models.utils import init_empty_weights
 
-install()
+from llmfoundry.models.utils import init_empty_weights
 
 from transformers import PreTrainedTokenizerBase, AutoModelForCausalLM, BitsAndBytesConfig
 
-from llmfoundry.models.hf.model_wrapper import HuggingFaceModelWithZLoss
+from llmfoundry.models.hf.model_wrapper import HuggingFaceModelWithFSDP
+
 from llmfoundry import ComposerHFCausalLM
-from llmfoundry.callbacks import AsyncEval
-from llmfoundry.data.dataloader import build_dataloader
-from llmfoundry.utils.builders import (add_metrics_to_eval_loaders,
-                                       build_algorithm, build_callback,
-                                       build_evaluators, build_logger,
-                                       build_optimizer, build_scheduler,
-                                       build_tokenizer)
-from llmfoundry.utils.config_utils import (log_config, pop_config,
-                                           process_init_device,
-                                           update_batch_size_info)
 
 import os, sys
 from peft.tuners.rosa import RosaModel, RosaScheduler, RosaConfig
 from peft import get_peft_model
+
+from composer import Trainer
+from composer.core.callback import Callback
+from composer.profiler import (JSONTraceHandler, Profiler, TraceHandler,
+                               cyclic_schedule)
+from composer.utils import dist, get_device, reproducibility
+from omegaconf import DictConfig, ListConfig
+from omegaconf import OmegaConf as om
+from rich.traceback import install
+
+from llmfoundry.eval.metrics.nlp import InContextLearningMetric
+from llmfoundry.utils import (find_mosaicml_logger, log_train_analytics,
+                              maybe_create_mosaicml_logger)
+
+install()
+from llmfoundry.callbacks import AsyncEval
+from llmfoundry.data.dataloader import build_dataloader
+from llmfoundry.layers_registry import ffns_with_megablocks
+from llmfoundry.utils.builders import (add_metrics_to_eval_loaders,
+                                       build_algorithm, build_callback,
+                                       build_composer_model, build_evaluators,
+                                       build_logger, build_optimizer,
+                                       build_scheduler, build_tokenizer)
+from llmfoundry.utils.config_utils import (log_config, pop_config,
+                                           process_init_device,
+                                           update_batch_size_info)
+from llmfoundry.utils.registry_utils import import_file
 
 log = logging.getLogger(__name__)
 
@@ -73,26 +80,10 @@ def validate_config(cfg: DictConfig):
             loaders.append(eval_loader)
     for loader in loaders:
         if loader.name == 'text':
-            if cfg.model.name in ['hf_prefix_lm', 'hf_t5']:
+            if cfg.model.name == 'hf_t5':
                 raise ValueError(
                     f'Model type "{cfg.model.name}" is not supported when using the "text " ' +\
-                    f'dataloader. Please use the "text_denoising" dataloader to pre-train that model type.')
-        elif loader.name == 'text_denoising':
-            if cfg.model.name == 'hf_causal_lm':
-                raise ValueError(
-                    f'Model type "{cfg.model.name}" is not supported when using the "text_denoising" ' +\
-                    f'dataloader. Please use the "text" dataloader to pre-train that model type.')
-            if loader.mixture_of_denoisers.decoder_only_format and cfg.model.name == 'hf_t5':
-                warnings.warn(
-                    'Model type "hf_t5" requires `decoder_only_format` to be ``False``. ' +\
-                    'Overriding `decoder_only_format` from ``True`` to ``False``.')
-                loader.mixture_of_denoisers.decoder_only_format = False
-            if (not loader.mixture_of_denoisers.decoder_only_format
-               ) and cfg.model.name == 'hf_prefix_lm':
-                warnings.warn(
-                    'Model type "hf_prefix_lm" requires `decoder_only_format` to be ``True``. ' +\
-                    'Overriding `decoder_only_format` from ``False`` to ``True``.')
-                loader.mixture_of_denoisers.decoder_only_format = True
+                    f'dataloader. Only finetuning is supported.')
 
     if 'icl_tasks' in cfg:
         if cfg.model.name == 'hf_t5':
@@ -114,16 +105,16 @@ def validate_config(cfg: DictConfig):
         fsdp_config = cfg.get('fsdp_config', None)
         act_ckpt = fsdp_config.get('activation_checkpointing', False)
         act_ckpt_reentrant = fsdp_config.get(
-            'activation_checkpointing_reentrant', True)
-        if fsdp_config is not None and act_ckpt == True and act_ckpt_reentrant == False:
+            'activation_checkpointing_reentrant', False)
+        if fsdp_config is not None and act_ckpt == True and act_ckpt_reentrant == True:
             warnings.warn(
                 '`te.Linear` layers do not support activation_checkpointing with '
-                + '`activation_checkpointing_reentrant = False`. ' +
-                'Setting cfg.fsdp_config.activation_checkpointing_reentrant=True.'
+                + '`activation_checkpointing_reentrant = True`. ' +
+                'Setting cfg.fsdp_config.activation_checkpointing_reentrant=False.'
             )
-            cfg.fsdp_config.activation_checkpointing_reentrant = True
+            cfg.fsdp_config.activation_checkpointing_reentrant = False
 
-    if 'te' in cfg.model.get('ffn_config', {}).get('ffn_type', 'mptmlp'):
+    if cfg.model.get('ffn_config', {}).get('ffn_type', 'mptmlp') == 'te_ln_mlp':
         warnings.warn(
             '`te.LayerNormMLP` requires has issues with torch._dynamo. ' +
             'Setting `torch._dynamo.config.suppress_errors = True` and falling back to eager.'
@@ -135,17 +126,27 @@ def validate_config(cfg: DictConfig):
             '`load_in_8bit` is only supported for evaluation rather than training.'
         )
 
+    if cfg.model.get('ffn_config', {}).get('ffn_type',
+                                           'mptmlp') in ffns_with_megablocks:
+        moe_world_size = cfg.model.get('ffn_config',
+                                       {}).get('moe_world_size', 1)
+        use_orig_params = cfg.get('fsdp_config',
+                                  {}).get('use_orig_params', True)
+        if moe_world_size > 1 and not use_orig_params:
+            raise ValueError(
+                f'MoEs with expert parallelism (moe_world_size {moe_world_size} > 1) require `use_orig_params=True`.'
+            )
+
 
 def build_composer_peft_model(
         model_config: str, rosa_config: Dict[str, Any],
         tokenizer: PreTrainedTokenizerBase, is_fsdp: bool = False) -> ComposerHFCausalLM:
+
     # 1) loads a hf model, 2) adds peft modules, 3) wraps it in a ComposerHFCausalLM.
-
     print('Building model from HuggingFace checkpoint...')
-    weight_bias_dtype = model_config.get('weight_bias_dtype', None)
 
+    weight_bias_dtype = model_config.get('weight_bias_dtype', None)
     if weight_bias_dtype == '4bit':
-        # assert model_config.compute_dtype == 'bf16', 'Only bf16 compute is supported for quantized models'
         compute_dtype = torch.bfloat16
         quant_config = BitsAndBytesConfig(
             load_in_4bit=True,
@@ -155,12 +156,10 @@ def build_composer_peft_model(
         )
     elif weight_bias_dtype == 'bf16':
          assert weight_bias_dtype == 'bf16', 'Only bf16 is supported for now'
-        #  assert model_config.compute_dtype == weight_bias_dtype
          compute_dtype = torch.bfloat16
          quant_config = None
     else:
         assert weight_bias_dtype == 'fp32'
-        # assert model_config.compute_dtype == weight_bias_dtype
         compute_dtype = torch.float32
         quant_config = None
 
@@ -169,14 +168,15 @@ def build_composer_peft_model(
             model_config.pretrained_model_name_or_path,
             device_map='cpu' if quant_config is None else 'auto',
             torch_dtype=compute_dtype,
-            load_in_4bit=weight_bias_dtype == '4bit',
+            # load_in_4bit=weight_bias_dtype == '4bit',
             quantization_config=quant_config,
             trust_remote_code=True,
-            use_auth_token=True
+            use_auth_token=True,
+            use_cache=False,
+            attn_implementation='eager'
         )
 
     print('Model built!')
-
     if rosa_config is not None:
         print('Building RoSA config...')
         config = RosaConfig(
@@ -190,6 +190,7 @@ def build_composer_peft_model(
             rosa_dtype=rosa_config.get('rosa_dtype', True),
             spa_num_grads=rosa_config.get('spa_num_grads', 1),
             grad_acc_mode=rosa_config.get('grad_acc_mode', 'mean_squared'),
+            grad_4bit_accum=rosa_config.get('grad_4bit_accum', False),
             mask_load_path=rosa_config.get('mask_load_path', None),
             mask_save_path=rosa_config.get('mask_save_path', None),
             terminate_after_mask_generation=rosa_config.get('terminate_after_mask_generation', False),
@@ -197,7 +198,6 @@ def build_composer_peft_model(
             bias="none",
             task_type="CAUSAL_LM",
         )
-
         print('Adding RoSA modules...')
         model = get_peft_model(model, config)
         print('RoSA modules added!')
@@ -214,22 +214,31 @@ def build_composer_peft_model(
         InContextLearningMCExpectedCalibrationError()
     ]
 
-    model = HuggingFaceModelWithZLoss(
+    model = HuggingFaceModelWithFSDP(
         model=model,
         shift_labels=True,
         tokenizer=tokenizer,
         metrics=train_metrics,
         eval_metrics=eval_metrics,
-        z_loss=0.0,
         init_device='cpu',
-        peft_config=None,
+        peft_config=None
     )
-    
+
     # model = ComposerHFCausalLM(model, tokenizer)
     # model = ModelComposerHFCausalLM(model, tokenizer)
     return model
 
 def main(cfg: DictConfig) -> Trainer:
+    # Run user provided code if specified
+    code_paths = pop_config(cfg,
+                            'code_paths',
+                            must_exist=False,
+                            default_value=[],
+                            convert=True)
+    # Import any user provided code
+    for code_path in code_paths:
+        import_file(code_path)
+
     # Filter deprecation warning from torch internal usage
     warnings.filterwarnings(
         action='ignore',
@@ -247,11 +256,18 @@ def main(cfg: DictConfig) -> Trainer:
     # Create copy of config for logging
     logged_cfg: DictConfig = copy.deepcopy(cfg)
 
+    cuda_alloc_conf = []
     # Get max split size mb
     max_split_size_mb: Optional[int] = cfg.pop('max_split_size_mb', None)
     if max_split_size_mb is not None:
-        os.environ[
-            'PYTORCH_CUDA_ALLOC_CONF'] = f'max_split_size_mb:{max_split_size_mb}'
+        cuda_alloc_conf.append(f'max_split_size_mb:{max_split_size_mb}')
+
+    # Expandable segments
+    if cfg.pop('expandable_segments', False):
+        cuda_alloc_conf.append('expandable_segments:True')
+
+    if len(cuda_alloc_conf) > 0:
+        os.environ['PYTORCH_CUDA_ALLOC_CONF'] = ','.join(cuda_alloc_conf)
 
     # Set CUDA lazy loading
     # This can save a bit of memory if not all modules are needed
@@ -298,12 +314,13 @@ def main(cfg: DictConfig) -> Trainer:
                                                        must_exist=False,
                                                        default_value=None,
                                                        convert=True)
+
     ds_config: Optional[Dict[str, Any]] = pop_config(cfg,
                                                      'ds_config',
                                                      must_exist=False,
                                                      default_value=None,
                                                      convert=True)
-    
+
     rosa_config: Optional[Dict[str, Any]] = pop_config(cfg,
                                                        'rosa',
                                                        must_exist=False,
@@ -313,7 +330,7 @@ def main(cfg: DictConfig) -> Trainer:
     hf_save_path: Union[int, str] = pop_config(cfg,
                                                'hf_save_path',
                                                must_exist=True)
-
+                                                       
     eval_loader_config: Optional[Union[DictConfig, ListConfig]] = pop_config(
         cfg, 'eval_loader', must_exist=False, default_value=None)
     icl_tasks_config: Optional[Union[ListConfig,
@@ -362,7 +379,8 @@ def main(cfg: DictConfig) -> Trainer:
                                                must_exist=True)
     eval_interval: Union[int, str] = pop_config(cfg,
                                                 'eval_interval',
-                                                must_exist=True)
+                                                default_value=1,
+                                                must_exist=False)
     precision: str = pop_config(cfg, 'precision', must_exist=True)
     max_seq_len: int = pop_config(cfg, 'max_seq_len', must_exist=True)
 
@@ -376,10 +394,14 @@ def main(cfg: DictConfig) -> Trainer:
                                             'save_folder',
                                             must_exist=False,
                                             default_value=None)
-    save_latest_filename: str = pop_config(cfg,
-                                           'save_latest_filename',
-                                           must_exist=False,
-                                           default_value='latest-rank{rank}.pt')
+    is_state_dict_sharded: bool = (fsdp_config.get('state_dict_type', 'full')
+                                   == 'sharded') if fsdp_config else False
+    save_latest_filename: str = pop_config(
+        cfg,
+        'save_latest_filename',
+        must_exist=False,
+        default_value='latest-sharded-rank{rank}'
+        if is_state_dict_sharded else 'latest-rank{rank}.pt')
     save_overwrite: bool = pop_config(cfg,
                                       'save_overwrite',
                                       must_exist=False,
@@ -444,6 +466,10 @@ def main(cfg: DictConfig) -> Trainer:
                                                        'load_ignore_keys',
                                                        must_exist=False,
                                                        default_value=None)
+    save_ignore_keys: Optional[List[str]] = pop_config(cfg,
+                                                       'save_ignore_keys',
+                                                       must_exist=False,
+                                                       default_value=None)
     compile_config: Optional[Dict[str, Any]] = pop_config(cfg,
                                                           'compile_config',
                                                           must_exist=False,
@@ -459,7 +485,6 @@ def main(cfg: DictConfig) -> Trainer:
                                          default_value=True)
 
     num_cpu_threads: Optional[int] = cfg.pop('num_cpu_threads', 0)
-
     if num_cpu_threads > 0:
         print(f'Setting number of CPU threads to {num_cpu_threads}')
         import spops
@@ -539,14 +564,11 @@ def main(cfg: DictConfig) -> Trainer:
         for name, logger_cfg in logger_configs.items()
     ] if logger_configs else []
 
-    mosaicml_logger = next(
-        (logger for logger in loggers if isinstance(logger, MosaicMLLogger)),
-        None)
+    mosaicml_logger = find_mosaicml_logger(loggers)
     if mosaicml_logger is None:
-        if os.environ.get(MOSAICML_PLATFORM_ENV_VAR, 'false').lower(
-        ) == 'true' and os.environ.get(MOSAICML_ACCESS_TOKEN_ENV_VAR):
-            # Adds mosaicml logger to composer if the run was sent from Mosaic platform, access token is set, and mosaic logger wasn't previously added
-            mosaicml_logger = MosaicMLLogger()
+        mosaicml_logger = maybe_create_mosaicml_logger()
+        if mosaicml_logger is not None:
+            # mosaicml_logger will be None if run isn't on MosaicML platform
             loggers.append(mosaicml_logger)
 
     if metadata is not None:
@@ -583,7 +605,7 @@ def main(cfg: DictConfig) -> Trainer:
         profiler = Profiler(**profiler_cfg,
                             trace_handlers=profiler_trace_handlers,
                             schedule=profiler_schedule)
-    
+
     # Callbacks
     callbacks: List[Callback] = [
         build_callback(str(name), callback_cfg, om.to_container(logged_cfg))
@@ -593,17 +615,14 @@ def main(cfg: DictConfig) -> Trainer:
     use_async_eval = any(isinstance(c, AsyncEval) for c in callbacks)
 
     print('ROSA CONFIG', rosa_config)
-
     # Build Model
     print('Initializing model...')
     with init_context:
         assert fsdp_config is None or rosa_config is None, 'fsdp is cuurently not supported with RoSA'
-
         model = build_composer_peft_model(model_config, rosa_config, tokenizer, is_fsdp=fsdp_config is not None)
-
         if rosa_config is not None:
             assert isinstance(model.model.base_model, RosaModel)
-
+    
     # Algorithms
     algorithms = [
         build_algorithm(str(name), algorithm_cfg)
@@ -612,14 +631,19 @@ def main(cfg: DictConfig) -> Trainer:
 
     if rosa_config is not None:
         algorithms.append(RosaScheduler(model.model.base_model))
-
+    
     # Dataloaders
     log.info('Building train loader...')
-    train_loader = build_dataloader(
-        train_loader_config,
-        tokenizer,
-        device_train_batch_size,
-    )
+    try:
+        train_loader = build_dataloader(
+            train_loader_config,
+            tokenizer,
+            device_train_batch_size,
+        )
+    except Exception as e:
+        if mosaicml_logger is not None:
+            mosaicml_logger.log_exception(e)
+        raise e
 
     if mosaicml_logger is not None:
         mosaicml_logger.log_metrics({'data_validated': time.time()})
@@ -648,12 +672,36 @@ def main(cfg: DictConfig) -> Trainer:
         if eval_gauntlet_callback is not None:
             callbacks.append(eval_gauntlet_callback)
 
+    if mosaicml_logger is not None:
+        log_train_analytics(mosaicml_logger, model_config, train_loader_config,
+                            eval_loader_config, callback_configs,
+                            tokenizer_name, load_path, icl_tasks_config,
+                            eval_gauntlet_config)
+    # # Build Model
+    # log.info('Initializing model...')
+    # model = build_composer_model(
+    #     name=model_config.name,
+    #     cfg=model_config,
+    #     tokenizer=tokenizer,
+    #     init_context=init_context,
+    #     master_weights_dtype=model_config.get('master_weights_dtype', None),
+    # )
+
     # Log number of parameters
-    n_params = sum(p.numel() for p in model.parameters())
-    n_trainable_params = sum(
-        p.numel() for p in model.parameters() if p.requires_grad)
+    if hasattr(model, 'n_total_params'):
+        n_params = model.n_total_params
+        n_trainable_params = n_params  # TODO: we currently assume all parameters are trainable.
+    else:
+        n_params = sum(p.numel() for p in model.parameters())
+        n_trainable_params = sum(
+            p.numel() for p in model.parameters() if p.requires_grad)
+    if hasattr(model, 'n_active_params'):
+        n_active_params = model.n_active_params
+    else:
+        n_active_params = n_params
     logged_cfg.update({
         'n_params': n_params,
+        'n_active_params': n_active_params,
         'n_trainable_params': n_trainable_params,
     })
 
@@ -664,7 +712,6 @@ def main(cfg: DictConfig) -> Trainer:
     else:
         print(f'Using a different learning rate for lora params {rosa_config["lora_lr"]}')
         assert optimizer_name == 'decoupled_adamw'
-
         lora_params = []
         other_params = []
         for name, param in model.named_parameters():
@@ -672,18 +719,30 @@ def main(cfg: DictConfig) -> Trainer:
                 lora_params.append(param)
             else:
                 other_params.append(param)
+
         print(f'Found {len(lora_params)} lora params and {len(other_params)} other params')
         params = [
             {'params': other_params},
             {'params': lora_params, 'lr': rosa_config['lora_lr']}
         ]
         optimizer = DecoupledAdamW(params, **optimizer_config)
+    
+
 
     # Now add the eval metrics
-    if eval_loader_config is not None and not use_async_eval:
-        train_metrics = model.get_metrics(is_train=True)
-        evaluators = add_metrics_to_eval_loaders(evaluators,
-                                                 list(train_metrics.keys()))
+    try:
+        if eval_loader_config is not None and not use_async_eval:
+            eval_metrics = model.get_metrics(is_train=False)
+            non_icl_metrics = [
+                metric_name for metric_name, metric in eval_metrics.items()
+                if not isinstance(metric, InContextLearningMetric)
+            ]
+            evaluators = add_metrics_to_eval_loaders(evaluators,
+                                                     non_icl_metrics)
+    except Exception as e:
+        if mosaicml_logger is not None:
+            mosaicml_logger.log_exception(e)
+        raise e
 
     # Build the Trainer
     log.info('Building trainer...')
@@ -719,6 +778,7 @@ def main(cfg: DictConfig) -> Trainer:
         load_weights_only=load_weights_only,
         load_strict_model_weights=load_strict_model_weights,
         load_ignore_keys=load_ignore_keys,
+        save_ignore_keys=save_ignore_keys,
         autoresume=autoresume,
         python_log_level=python_log_level,
         dist_timeout=dist_timeout,
@@ -739,27 +799,36 @@ def main(cfg: DictConfig) -> Trainer:
     log.info('Starting training...')
     trainer.fit()
 
-    print('Saving directly into HF-friendly format')
-    path_to_save = os.path.join(hf_save_path, run_name)
-    
-    print('saving the model.')
-    if fsdp_config is None:
-        model.model.save_pretrained(path_to_save, is_main_process=torch.distributed.get_rank() == 0, state_dict=model.model.state_dict())
-    else:
-        # full_state_dict_config = FullStateDictConfig(offload_to_cpu=True, rank0_only=True)
-        # with FSDP.state_dict_type(model.model, StateDictType.FULL_STATE_DICT, full_state_dict_config):
-        with FSDP.summon_full_params(model.model, writeback=False, rank0_only=True, offload_to_cpu=True):
-            model_to_save = model.model
-            model_to_save.save_pretrained(path_to_save, state_dict=model_to_save.state_dict())
-    
-    if torch.distributed.get_rank() == 0:
-        tokenizer.save_pretrained(path_to_save)
-    # NOTE: for some reason the saving code above would create empty pytorch_model.bin file, so we delete it manually
-    # TODO: figure out why this happens
-    if torch.distributed.get_rank() == 0 and os.path.exists(os.path.join(path_to_save, "pytorch_model.bin")):
-        tmp = torch.load(os.path.join(path_to_save, "pytorch_model.bin"))
-        if not tmp:  # empty dict, remove it
-            os.remove(os.path.join(path_to_save, "pytorch_model.bin"))
+    # if rosa is enabled, save the model manually, since 
+    # llm-foundry's checkpointing doesn't work properly with RoSA
+    if rosa_config is not None:
+        assert fsdp_config is None, 'fsdp is cuurently not supported with RoSA'
+        path_to_save = os.path.join(hf_save_path, run_name)
+        print(f'saving the model to {path_to_save}')
+        if torch.distributed.get_rank() == 0:
+            model.model.save_pretrained(path_to_save, is_main_process=True, state_dict=model.model.state_dict())
+            tokenizer.save_pretrained(path_to_save)
+
+    # print('Saving directly into HF-friendly format')
+
+    # path_to_save = os.path.join(hf_save_path, run_name)
+    # print('saving the model.')
+    # if fsdp_config is None:
+    #     model.model.save_pretrained(path_to_save, is_main_process=torch.distributed.get_rank() == 0, state_dict=model.model.state_dict())
+    # else:
+    #     with FSDP.summon_full_params(model.model, writeback=False, rank0_only=True, offload_to_cpu=True):
+    #         model_to_save = model.model
+    #         model_to_save.save_pretrained(path_to_save, state_dict=model_to_save.state_dict())
+
+    # if torch.distributed.get_rank() == 0:
+    #     tokenizer.save_pretrained(path_to_save)
+
+    # # NOTE: for some reason the saving code above would create empty pytorch_model.bin file, so we delete it manually
+    # # TODO: figure out why this happens
+    # if torch.distributed.get_rank() == 0 and os.path.exists(os.path.join(path_to_save, "pytorch_model.bin")):
+    #     tmp = torch.load(os.path.join(path_to_save, "pytorch_model.bin"))
+    #     if not tmp:  # empty dict, remove it
+    #         os.remove(os.path.join(path_to_save, "pytorch_model.bin"))
 
     log.info('Done.')
     return trainer

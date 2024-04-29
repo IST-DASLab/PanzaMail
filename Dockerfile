@@ -47,7 +47,7 @@ ARG MAMBA_ROOT_PREFIX=/home/sancho/.micromamba
 RUN /home/sancho/.local/bin/micromamba env create -y -n panza python=3.10 \
   && /home/sancho/.local/bin/micromamba clean --all -y -f
 RUN /home/sancho/.local/bin/micromamba install -n panza \
-  pytorch==2.1.2 pytorch-cuda=12.1 -c pytorch -c nvidia -y
+  pytorch==2.2.2 pytorch-cuda=12.1 -c pytorch -c nvidia -y
 
 # Install spops dependencies and build flash-attn
 # See https://github.com/IST-DASLab/spops/blob/main/setup.py for details.
@@ -116,21 +116,18 @@ RUN .local/bin/micromamba config append channels conda-forge \
 # Create panza env
 RUN /home/sancho/.local/bin/micromamba env create -y -n panza python=3.10
 RUN /home/sancho/.local/bin/micromamba install -n panza \
-  pytorch==2.1.2 torchvision torchaudio pytorch-cuda=12.1 -c pytorch -c nvidia -y
+  pytorch==2.2.2 torchvision torchaudio pytorch-cuda=12.1 -c pytorch -c nvidia -y
 RUN /home/sancho/.local/bin/micromamba run -n panza \
   pip install --no-cache-dir \
   langdetect langchain langchain-community sentence-transformers \
-  faiss-cpu fire nltk gradio
+  faiss-cpu fire nltk gradio cmake packaging
 RUN /home/sancho/.local/bin/micromamba run -n panza \
   pip install --no-cache-dir \
-  llm-foundry==0.5.0 composer==0.19.1
+  git+https://github.com/IST-DASLab/llm-foundry
 
 RUN /home/sancho/.local/bin/micromamba run -n panza \
   pip install --no-cache-dir \
-  git+https://github.com/IST-DASLab/peft-rosa.git
-RUN /home/sancho/.local/bin/micromamba run -n panza \
-  pip install --no-cache-dir \
-  transformers==4.35.2
+  git+https://github.com/IST-DASLab/peft-rosa.git@grad_quant
 
 # Clean up
 RUN /home/sancho/.local/bin/micromamba clean --all -y -f

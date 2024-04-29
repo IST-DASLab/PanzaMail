@@ -9,6 +9,11 @@ USER_PREAMBLE_PATH = os.environ.get("PANZA_USER_PREAMBLE_PATH")
 SYSTEM_PREAMBLE = prompting.load_preamble(SYSTEM_PREAMBLE_PATH)
 USER_PREAMBLE = prompting.load_user_preamble(USER_PREAMBLE_PATH)
 
+PANZA_GENERATIVE_MODEL = os.environ.get("PANZA_GENERATIVE_MODEL")
+PROMPT_START_WRAPPER, PROMPT_END_WRAPPER, RESPONSE_START_WRAPPER, RESPONSE_END_WRAPPER = (
+    prompting.get_model_special_tokens(PANZA_GENERATIVE_MODEL)
+)
+
 
 r"""Example custom preprocessing function.
 
@@ -45,8 +50,8 @@ def panza_preprocessing_function(inp: Dict) -> Dict:
     try:
         prompt_raw = inp["summary"].split("\n\nInstruction: ")[-1]
         return {
-            "prompt": f"[INST] {prompt_raw} [/INST]\n",
-            "response": inp["email"],
+            "prompt": PROMPT_START_WRAPPER + prompt_raw + PROMPT_END_WRAPPER,
+            "response": RESPONSE_START_WRAPPER + inp["email"] + RESPONSE_END_WRAPPER,
         }
     except Exception as e:
         raise ValueError(f"Unable to extract prompt/response from {inp}") from e
@@ -57,8 +62,8 @@ def panza_preprocessing_function_train_with_preamble(inp: Dict) -> Dict:
         prompt_raw = inp["summary"].split("\n\nInstruction: ")[-1]
         prompt = prompting.create_prompt(prompt_raw, SYSTEM_PREAMBLE, USER_PREAMBLE)
         return {
-            "prompt": f"[INST] {prompt} [/INST]\n",
-            "response": inp["email"],
+            "prompt": PROMPT_START_WRAPPER + prompt + PROMPT_END_WRAPPER,
+            "response": RESPONSE_START_WRAPPER + inp["email"] + RESPONSE_END_WRAPPER,
         }
     except Exception as e:
         raise ValueError(f"Unable to extract prompt/response from {inp}") from e

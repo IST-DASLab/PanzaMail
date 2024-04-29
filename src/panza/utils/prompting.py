@@ -2,6 +2,16 @@ from typing import List, Optional, Text
 
 from langchain_core.documents import Document
 
+MISTRAL_PROMPT_START_WRAPPER = "[INST] "
+MISTRAL_PROMPT_END_WRAPPER = " [/INST]"
+MISTRAL_RESPONSE_START_WRAPPER = "<s>"
+MISTRAL_RESPONSE_END_WRAPPER = "</s>"
+
+LLAMA3_PROMPT_START_WRAPPER = "<|begin_of_text|><|start_header_id|>user<|end_header_id|>\n\n"
+LLAMA3_PROMPT_END_WRAPPER = "<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n"
+LLAMA3_RESPONSE_START_WRAPPER = ""
+LLAMA3_RESPONSE_END_WRAPPER = "<|eot_id|>"
+
 
 def create_prompt(
     user_input: Text,
@@ -12,7 +22,7 @@ def create_prompt(
 ) -> Text:
 
     if relevant_emails:
-        assert rag_preamble, "RAG preamble format must be provided if similar emails are provided"
+        assert rag_preamble, "RAG preamble format must be provided if similar emails are provided."
         rag_prompt = _create_rag_preamble_from_emails(rag_preamble, relevant_emails).strip()
     else:
         rag_prompt = ""
@@ -78,13 +88,36 @@ def load_user_preamble(path):
     with open(path, "r") as file:
         lines = [l for l in file.readlines() if not l.strip().startswith("#")]
         print(lines)
-        preamble =  "".join(lines)
+        preamble = "".join(lines)
         if "CHANGE ME" in preamble:
-            print("*" * 66 + "\n* WARNING: User prompt preamble not customized.                  *\n* Please edit the preamble at prompt_preambles/user_preamble.txt *\n" + "*" * 66) 
+            print(
+                "*" * 66
+                + "\n* WARNING: User prompt preamble not customized.                  *\n* Please edit the preamble at prompt_preambles/user_preamble.txt *\n"
+                + "*" * 66
+            )
         return preamble
+
 
 def load_all_preambles(system_preamble, user_preamble, rag_preamble):
     system_preamble = load_preamble(system_preamble) if system_preamble else ""
     user_preamble = load_user_preamble(user_preamble) if user_preamble else ""
     rag_preamble = load_preamble(rag_preamble) if rag_preamble else ""
     return system_preamble, user_preamble, rag_preamble
+
+
+def get_model_special_tokens(model_name):
+    model_name = model_name.lower()
+    if "llama" in model_name:
+        prompt_start_wrapper = LLAMA3_PROMPT_START_WRAPPER
+        prompt_end_wrapper = LLAMA3_PROMPT_END_WRAPPER
+        response_start_wrapper = LLAMA3_RESPONSE_START_WRAPPER
+        response_end_wrapper = LLAMA3_RESPONSE_END_WRAPPER
+    elif "mistral" in model_name.lower():
+        prompt_start_wrapper = MISTRAL_PROMPT_START_WRAPPER
+        prompt_end_wrapper = MISTRAL_PROMPT_END_WRAPPER
+        response_start_wrapper = MISTRAL_RESPONSE_START_WRAPPER
+        response_end_wrapper = MISTRAL_RESPONSE_END_WRAPPER
+    else:
+        raise ValueError(f"Presets missing for prompting model {model_name}")
+
+    return prompt_start_wrapper, prompt_end_wrapper, response_start_wrapper, response_end_wrapper
