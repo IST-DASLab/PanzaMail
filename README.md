@@ -1,10 +1,18 @@
 <div align="center">
-  <img src="panza_logo.png" alt="panza logo" width="300"/>
+  <img src="panza_logo.png" alt="panza demo" width="200"/>
 </div>
 
-# Panza: A personal email assistant, trained and running on-device
+#  Panza: A personal email assistant, trained and running on-device
+
+
 
 ##  What is Panza?
+
+<div align="center">
+  <img src="panza_demo.gif" alt="panza logo" width="500"/>
+</div>
+
+
 Panza is an automated email assistant customized to your writing style and past email history. \
 Its main features are as follows: 
 * Panza requires a set of emails you have sent, an open Large Language Model (LLM), and some capable hardware (e.g. a GPU).
