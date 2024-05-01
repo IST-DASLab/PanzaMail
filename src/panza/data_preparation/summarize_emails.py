@@ -1,4 +1,5 @@
 import argparse
+import gc
 import json
 import os
 import sys
@@ -62,6 +63,8 @@ class LLMSummarizer:
         return batch_with_prompt
 
     def run_inference(self, emails: List[Dict]) -> List[Dict]:
+        gc.collect()
+        torch.cuda.empty_cache()
         batch = self.prepare_batch_for_inference(emails)
 
         model_inputs = self.tokenizer.apply_chat_template(
