@@ -35,7 +35,7 @@ Given a dataset consisting of all pairs, we use these pairs to "play back" your 
 We find that this approach is very useful for the LLM to "learn" the user's writing style.
 
 
-### :weight_lifting: Step 2: Local Fine-tuning via Robust Adaptation (RoSA)
+### :weight_lifting: Step 2: Local Fine-Tuning via Robust Adaptation (RoSA)
 
 We then use parameter-efficient finetuning to train the LLM on this dataset, locally. We found that we get the best results with the [RoSA method](https://arxiv.org/pdf/2401.04679.pdf), which combines low-rank (LoRA) and sparse finetuning. If parameter efficiency is not a concern, that is, you have a more powerful GPU, then regular, full-rank/full-parameter finetuning can also be used. We find that a moderate amount of further training strikes the right balance between matching the writer's style without memorizing irrelevant details in past emails.
 
