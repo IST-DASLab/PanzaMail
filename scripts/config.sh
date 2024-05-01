@@ -10,6 +10,7 @@ export PANZA_FINETUNE_CONFIGS="$PANZA_WORKSPACE/src/panza/finetuning/configs" # 
 
 export PANZA_PREAMBLES="$PANZA_WORKSPACE/prompt_preambles" # this is where the system prompt and user prompt preambles can be accessed; you will need to edit these
 export PANZA_SYSTEM_PREAMBLE_PATH="$PANZA_PREAMBLES/system_preamble.txt"  # system prompt
+# IMPORTANT: Please edit the user preamble (at the PANZA_USER_PREAMBLE_PATH) if you plan to use it (recommended).
 export PANZA_USER_PREAMBLE_PATH="$PANZA_PREAMBLES/user_preamble.txt" # a useful preamble to the user instruction, explaining what's going on to the LLM
 export PANZA_RAG_PREAMBLE_PATH="$PANZA_PREAMBLES/rag_preamble.txt"  # a preamble for the RAG component
 
