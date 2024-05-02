@@ -13,8 +13,7 @@
 
 Panza is an automated email assistant customized to your writing style and past email history. \
 Its main features are as follows: 
-* Panza requires a set of emails you have sent, an open Large Language Model (LLM), and some capable hardware (e.g. a GPU).
-* It produces a fine-tuned LLM that matches your writing style, pairing it with a Retrieval-Augmented Generation (RAG) component which helps it produce relevant emails.
+* Panza produces a fine-tuned LLM that matches your writing style, pairing it with a Retrieval-Augmented Generation (RAG) component which helps it produce relevant emails.
 * Panza **can be trained and run entirely locally**. Currently, it requires a single GPU with
 16-24 GiB of memory, but we also plan to release a CPU-only version. **At no point in training or execution is your data shared with the entities that trained the original LLMs, with LLM distribution services such as Huggingface, or with us.**
 * Training and execution are also quick - for a dataset on the order of 1000 emails, training Panza takes well under an hour, and generating a new email takes a few seconds at most.
