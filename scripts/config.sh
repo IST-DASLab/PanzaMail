@@ -14,8 +14,8 @@ export PANZA_SYSTEM_PREAMBLE_PATH="$PANZA_PREAMBLES/system_preamble.txt"  # syst
 export PANZA_USER_PREAMBLE_PATH="$PANZA_PREAMBLES/user_preamble.txt" # a useful preamble to the user instruction, explaining what's going on to the LLM
 export PANZA_RAG_PREAMBLE_PATH="$PANZA_PREAMBLES/rag_preamble.txt"  # a preamble for the RAG component
 
-export PANZA_SUMMARIZATION_BATCH_SIZE=8  # batch size for summarization
-export PANZA_EVALUATION_BATCH_SIZE=8  # batch size for evaluation
+export PANZA_SUMMARIZATION_BATCH_SIZE=8  # batch size for summarization.
+export PANZA_EVALUATION_BATCH_SIZE=1  # batch size for evaluation. Can safely be set to higher value (e.g., 8) if the GPU has enough capacity.
 
 export MODEL_PRECISION=bf16 # precision at which the base model is stored; options: bf16, fp32, or '4bit'
 # export PANZA_GENERATIVE_MODEL="mistralai/Mistral-7B-Instruct-v0.2"
