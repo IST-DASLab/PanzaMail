@@ -68,12 +68,15 @@ The overall structure of Panza is as follows:
 Run the following commands to pull a docker image with all the dependencies installed.
 ```
 docker pull istdaslab/panzamail
-docker run -it --gpus all istdaslab/panzamail /bin/bash
 ```
 
 or alternatively, you can build the image yourself:
 ```
 docker build . -f Dockerfile -t istdaslab/panzamail
+```
+
+Then run it with:
+```
 docker run -it --gpus all istdaslab/panzamail /bin/bash
 ```
 
