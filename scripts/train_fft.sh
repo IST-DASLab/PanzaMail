@@ -52,7 +52,7 @@ if [ "$PANZA_FINETUNE_WITH_PREAMBLE" = 1 ]; then
   PREPROCESSING_FN=panza.finetuning.preprocessing:panza_preprocessing_function_train_with_preamble
 else
   PREAMBLE_STR=""
-  PREPROCESSING_FN=panza.finetuningpreprocessing:panza_preprocessing_function
+  PREPROCESSING_FN=panza.finetuning.preprocessing:panza_preprocessing_function
 fi
 
 # create directories to save the models
