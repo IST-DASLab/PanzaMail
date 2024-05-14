@@ -1,8 +1,22 @@
+# We conduct evaluations with three scores.
+# The BLEU score is frequently used to evaluate translations and compares n-grams in a 'golden'
+#     translation to those in a candidate translation. Multiple golden translations are possible.
+# The ROUGE score is frequently used for translation and summarization; it also looks at
+#     n-gram similarity. It is actually several scores, since precision, recall, and F1 score are
+#     reported separately.
+# The MAUVE score measures distribution similarity (in the sense of KL-divergence) between the
+#     targets and outputs, and is not computed on a per-example basis. The similarity is computed
+#     in the latent space of an LLM, by default GPT-2.
+
+
 import json
 import os
 import sys
 
+from evaluate import load
 import nltk
+from torchmetrics.text.rouge import ROUGEScore
+
 import numpy as np
 import torch
 import wandb
@@ -22,6 +36,9 @@ def main():
     parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--wandb-run-id", type=str, default=None)
     args = parser.parse_args()
+    
+    rouge = ROUGEScore()
+    mauve = load('mauve')
 
     if args.nthreads is not None:
         torch.set_num_threads(args.nthreads)
@@ -46,24 +63,21 @@ def main():
             grouped_golden[entry["summary"]]["templates"].append(entry["email"])
         else:
             grouped_golden[entry["summary"]] = {}
-            if "prompt_type" not in entry:
-                grouped_golden[entry["summary"]]["prompt_type"] = "natural"
-            else:
-                grouped_golden[entry["summary"]]["prompt_type"] = entry["prompt_type"]
             grouped_golden[entry["summary"]]["templates"] = [(entry["email"])]
 
     print("Evaluating with batch size", args.batch_size)
 
     results = {}
+    all_results = []
+    prompt_scores = {}
     outputs_logs = {}
     grouped_golden = list(grouped_golden.items())
     for i in range(0, len(grouped_golden), args.batch_size):
         batch = grouped_golden[i:i + args.batch_size]
         prompts = [item[0] for item in batch]
-        prompt_types = [item[1]["prompt_type"] for item in batch]
         golden_responses = [item[1]["templates"] for item in batch]
 
-        prompt_scores = [[] for _ in range(len(prompts))]
+        #prompt_scores = [[] for _ in range(len(prompts))]
         for _ in range(args.responses_per_prompt):
             full_prompts, outputs = base_inference.run_inference(
                 instructions=prompts,
@@ -84,45 +98,66 @@ def main():
                 device=args.device,
             )
 
-            for i, prompt in enumerate(prompts):
-                bleu_score = nltk.translate.bleu_score.sentence_bleu(golden_responses[i], outputs[i])
-                result = {"prompt": prompt, "full_prompt": full_prompts[i],
-                                    "golden" : golden_responses[i][0],  "output": outputs[i],
-                                    "bleu_score": bleu_score}
-                prompt_scores[i].append(result)
-                print("\n-----------\n", "PROMPT:\n", result["prompt"], "\n\nOUTPUT:\n", result["output"], "\n\nBLEU SCORE:\n", result["bleu_score"])
+            for j, prompt in enumerate(prompts):
+                bleu_score = nltk.translate.bleu_score.sentence_bleu(golden_responses[j], outputs[j])
+                rouge_score = rouge(outputs[j], golden_responses[j])
+                if prompt not in prompt_scores.keys():
+                    prompt_scores[prompt] = {"prompt": prompt, "full_prompt": full_prompts[j],
+                                    "golden" : golden_responses[j],  "output": [outputs[j]],
+                                    "BLEU": [bleu_score]}
+                    for score, value in rouge_score.items():
+                        prompt_scores[prompt][score] = [value.item()]
+                else:
+                    prompt_scores[prompt]["output"].append(outputs[j])
+                    prompt_scores[prompt]["BLEU"].append(bleu_score)
+                    for score, value in rouge_score.items():
+                        prompt_scores[prompt][score].append(value.item())
 
-        for i, prompt_type in enumerate(prompt_types):
-            if prompt_type in results.keys():
-                results[prompt_type].append(np.mean([x["bleu_score"] for x in prompt_scores[i]]))
-                for score in prompt_scores[i]:
-                    outputs_logs[prompt_type].append(score)
-            else:
-                results[prompt_type] = [np.mean([x["bleu_score"] for x in prompt_scores[i]])]
-                outputs_logs[prompt_type] = []
-                for score in prompt_scores[i]:
-                    outputs_logs[prompt_type].append(score)
+                print("\n-----------\n", "PROMPT:\n", prompt, "\n\nOUTPUT:\n", outputs[j], "\n\nBLEU SCORE:\n", bleu_score, "\n\nROUGE SCORE:\n", rouge_score)
 
-    final_results = []
-    for prompt_type, bleu_scores in results.items():
-        final_results.append([prompt_type, np.mean(bleu_scores), np.min(bleu_scores)])
 
-    print(final_results)
+    means = {}
+    mins = {}
+    score_names = [k for k in prompt_scores.values().__iter__().__next__().keys() if 'BLEU' in k or 'rouge' in k]
 
-    # Optionally, update wandb run with BLEU scores
+    for k in score_names:
+        means[k] = np.mean([v for scores in prompt_scores.values() for v in scores[k] ])
+        mins[k] = np.min([v for scores in prompt_scores.values() for v in scores[k] ])
+
+    # To compute the MAUVE score, we need equal-length flat arrays of
+    # outputs and goldens. If we have multiple outputs per prompt, we
+    # output them all, with the same golden prompt.
+    # TODO: not sure if it would be better to randomly sample from the
+    # outputs in this case.
+    # TODO: consider handling the case where there are also multiple golden
+    # queries per output. (We don't use this for anything now).
+    flattened_golden = []
+    flattened_outputs = []
+    for prompt_info in prompt_scores.values():
+        flattened_golden += ([prompt_info["golden"][0]])*len(prompt_info['output'])
+        flattened_outputs += prompt_info['output']
+    print(len(flattened_golden), len(flattened_outputs))
+    print(flattened_golden[0], flattened_outputs[0])
+    mauve_score = mauve.compute(predictions=flattened_outputs, references=flattened_golden) 
+    print("MAUVE score", mauve_score)
+    means["MAUVE"] = mauve_score.mauve
+
+
+    # Optionally, update wandb run with eval scores
+    rag_str = "RAG-" if args.use_rag else ""
     if args.wandb_run_id:
-        rag_str = "RAG" if args.use_rag else ""
         with wandb.init(id=args.wandb_run_id, resume=True):
-            for prompt_type, bleu_scores_mean, bleu_scores_min in final_results:
-                wandb.log({f"BLEU/{prompt_type}/BLEU-{rag_str}-mean": bleu_scores_mean})
-                wandb.log({f"BLEU/{prompt_type}/BLEU-{rag_str}-min": bleu_scores_min})
+            wandb.log({f"EVAL/{k}-{rag_str}mean": v for k, v in means.items()})
+            wandb.log({f"EVAL/{k}-{rag_str}min": v for k, v in mins.items()})
+    else:
+        print({f"EVAL/{k}-{rag_str}mean": v for k, v in means.items()})
+        print({f"EVAL/{k}-{rag_str}min": v for k, v in mins.items()})
 
-    with open(os.path.join(args.model, f"{'rag_' if args.use_rag else ''}eval_responses.txt"), 'w') as f:
-        #f.writelines(["\t".join([str(x) for x in score]) for result in outputs.values() for score in result])
-        json.dump(outputs_logs, f, ensure_ascii=False, indent=4)
+    with open(os.path.join(args.model, f"{rag_str}eval_responses.txt"), 'w') as f:
+        json.dump(prompt_scores, f, ensure_ascii=False, indent=4)
 
-    with open(os.path.join(args.model, f"{'rag_' if args.use_rag else ''}eval_summary.txt"), 'w') as f:
-        json.dump(final_results, f, ensure_ascii=False, indent=4)
+    with open(os.path.join(args.model, f"{rag_str}eval_summary.txt"), 'w') as f:
+        json.dump({"means": means, "mins": mins}, f, ensure_ascii=False, indent=4)
 
 if __name__ == "__main__":
     main()
