@@ -21,7 +21,8 @@ def load_emails(path: str) -> List[Dict]:
 def process_emails(emails: List[Dict], chunk_size: int, chunk_overlap: int) -> List[Document]:
     # Convert e-mails to langchain documents
     documents = [
-        Document(page_content=email["email"], metadata={"subject": email["subject"]})
+        # Document(page_content=email["email"], metadata={"subject": email["subject"]})
+        Document(page_content=email["email"], metadata={})  # TODO(armand): Handle subject metadata
         for email in emails
     ]
 
