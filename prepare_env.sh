@@ -12,7 +12,7 @@ conda install gxx_linux-64 -y
 
 conda install pytorch==2.2.2 torchvision torchaudio pytorch-cuda=12.1 -c pytorch -c nvidia -y
 
-pip install langdetect langchain langchain-community sentence-transformers faiss-cpu fire nltk mauve-text evaluate torchmetrics gradio cmake packaging
+pip install langdetect langchain langchain-community sentence-transformers faiss-cpu fire mauve-text evaluate torchmetrics gradio cmake packaging
 
 pip install git+https://github.com/IST-DASLab/llm-foundry
 pip install git+https://github.com/IST-DASLab/spops.git
