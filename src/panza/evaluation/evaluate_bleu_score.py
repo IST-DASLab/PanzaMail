@@ -11,11 +11,13 @@
 
 import json
 import os
+import re
+import string
 import sys
 
 from evaluate import load
-import nltk
 from torchmetrics.text.rouge import ROUGEScore
+from torchmetrics.text.bleu import BLEUScore
 
 import numpy as np
 import torch
@@ -38,6 +40,11 @@ def main():
     args = parser.parse_args()
     
     rouge = ROUGEScore()
+    # This library computes the BLEU score components separately. We do not use a length penalty.
+    bleu1 = BLEUScore(n_gram=1)
+    bleu2 = BLEUScore(n_gram=2)
+    bleu3 = BLEUScore(n_gram=3)
+    bleu4 = BLEUScore(n_gram=4)
     mauve = load('mauve')
 
     if args.nthreads is not None:
@@ -98,18 +105,29 @@ def main():
                 device=args.device,
             )
 
+            # Remove some boilerplate added by instruction-tuned models w/out finetuning.
+            outputs = [o.replace("Here is the email:\n", "") for o in outputs]
+            outputs = [re.sub(r'SUBJECT:.*\n', "", o) for o in outputs]
+            outputs = [re.sub(r'Subject:.*\n', "", o) for o in outputs]
+            outputs = [re.sub(r'E-MAIL CONTENT:.*\n', "", o) for o in outputs]
             for j, prompt in enumerate(prompts):
-                bleu_score = nltk.translate.bleu_score.sentence_bleu(golden_responses[j], outputs[j])
+                # We clean up the strings for the BLEU and ROUGE scores.
+                punc_table = str.maketrans({key: None for key in string.punctuation})
+                golden = [" ".join(x.translate(punc_table).lower().split()) for x in golden_responses[j]]
+                candidate = " ".join(outputs[j].translate(punc_table).lower().split())
+                
                 rouge_score = rouge(outputs[j], golden_responses[j])
+                bleu_score = np.mean([bleu([candidate], [golden]) for bleu in [bleu1, bleu2, bleu3, bleu4]])
+                rouge_score = rouge(candidate, golden)
                 if prompt not in prompt_scores.keys():
                     prompt_scores[prompt] = {"prompt": prompt, "full_prompt": full_prompts[j],
                                     "golden" : golden_responses[j],  "output": [outputs[j]],
-                                    "BLEU": [bleu_score]}
+                                    "BLEU": [bleu_score.item()]}
                     for score, value in rouge_score.items():
                         prompt_scores[prompt][score] = [value.item()]
                 else:
                     prompt_scores[prompt]["output"].append(outputs[j])
-                    prompt_scores[prompt]["BLEU"].append(bleu_score)
+                    prompt_scores[prompt]["BLEU"].append(bleu_score.item())
                     for score, value in rouge_score.items():
                         prompt_scores[prompt][score].append(value.item())
 
@@ -136,11 +154,10 @@ def main():
     for prompt_info in prompt_scores.values():
         flattened_golden += ([prompt_info["golden"][0]])*len(prompt_info['output'])
         flattened_outputs += prompt_info['output']
-    print(len(flattened_golden), len(flattened_outputs))
-    print(flattened_golden[0], flattened_outputs[0])
     mauve_score = mauve.compute(predictions=flattened_outputs, references=flattened_golden) 
     print("MAUVE score", mauve_score)
     means["MAUVE"] = mauve_score.mauve
+    print("Mean scores across all prompts: ", {f"    {k}: {v}" for k, v in means.items()})
 
 
     # Optionally, update wandb run with eval scores
