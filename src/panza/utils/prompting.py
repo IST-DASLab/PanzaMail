@@ -69,7 +69,7 @@ def _create_rag_context_from_emails(emails: List[Document]) -> Text:
     rag_context = ""
     for email in emails:
         rag_context += (
-            f"SUBJECT: {email.metadata['subject']}\n"
+            # f"SUBJECT: {email.metadata['subject']}\n"  # TODO(armand): Handle subject metadata
             f"E-MAIL CONTENT:\n{email.page_content}\n\n---\n\n"
         )
 

@@ -121,7 +121,7 @@ def generate_synthetic_instructions(emails: List[Dict], summarizer: LLMSummarize
         summarized_emails.append(
             {
                 "email": emails[j]["email"],
-                "subject": emails[j]["subject"],
+                # "subject": emails[j]["subject"],  # TODO(armand): Handle subject metadata
                 "summary": instruction,
             }
         )
