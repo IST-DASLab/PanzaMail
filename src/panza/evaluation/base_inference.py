@@ -63,21 +63,21 @@ def load_model_and_tokenizer(model_path, device, dtype, load_in_4bit):
         print("found an adapter.")
         if load_in_4bit:
             model = AutoPeftModelForCausalLM.from_pretrained(
-                model_path, device_map=device, quantization_config=quant_config
+                model_path, device_map=device, quantization_config=quant_config, trust_remote_code=True
             )
         else:
             model = AutoPeftModelForCausalLM.from_pretrained(
-                model_path, torch_dtype=dtype, device_map=device
+                model_path, torch_dtype=dtype, device_map=device, trust_remote_code=True
             )
         model = model.merge_and_unload()
     else:
         if load_in_4bit:
             model = AutoModelForCausalLM.from_pretrained(
-                model_path, device_map=device, quantization_config=quant_config
+                model_path, device_map=device, quantization_config=quant_config, trust_remote_code=True
             )
         else:
             model = AutoModelForCausalLM.from_pretrained(
-                model_path, torch_dtype=dtype, device_map=device
+                model_path, torch_dtype=dtype, device_map=device, trust_remote_code=True
             )
 
     tokenizer = AutoTokenizer.from_pretrained(

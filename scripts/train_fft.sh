@@ -15,12 +15,14 @@ export BS=8
 export PER_DEVICE_BS=1
 export SEED=${PANZA_SEED}
 
-if [[ ${MODEL_TYPE} == llama3 ]]; then 
+if [[ ${MODEL_TYPE} == llama3 ]]; then
     export LR=1e-5 # learning rate
-elif [[ ${MODEL_TYPE} == mistralv2 ]]; then 
+elif [[ ${MODEL_TYPE} == mistralv2 ]]; then
+    export LR=1e-5 # learning rate
+elif [[ ${MODEL_TYPE} == phi3 ]]; then
     export LR=1e-5 # learning rate
 else
-    echo "Model type ${MODEL_TYPE} not recognized! Panza only works with mistralv2 and llama3 models. Exiting."
+    echo "Model type ${MODEL_TYPE} not recognized! Panza only works with mistralv2, llama3 and phi3 models. Exiting."
     exit
 fi
 

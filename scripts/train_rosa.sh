@@ -19,14 +19,17 @@ export SPA_NUM_GRADS=1 # number of gradients used for mask generation
 export SPA_GRAD_ACC_MODE=mean_squared # 'mean' or 'mean_squared': how to accumulate gradients
 export SEED=${PANZA_SEED}
 
-if [[ ${MODEL_TYPE} == llama3 ]]; then 
+if [[ ${MODEL_TYPE} == llama3 ]]; then
     export LR=1e-5 # learning rate
     export LORA_LR=1e-5 # a separate learning rate for the low-rank adapters
-elif [[ ${MODEL_TYPE} == mistralv2 ]]; then 
+elif [[ ${MODEL_TYPE} == mistralv2 ]]; then
+    export LR=1e-5 # learning rate
+    export LORA_LR=1e-5 # a separate learning rate for the low-rank adapters
+elif [[ ${MODEL_TYPE} == phi3 ]]; then
     export LR=1e-5 # learning rate
     export LORA_LR=1e-5 # a separate learning rate for the low-rank adapters
 else
-    echo "Model type ${MODEL_TYPE} not recognized! Panza only works with mistralv2 and llama3 models. Exiting."
+    echo "Model type ${MODEL_TYPE} not recognized! Panza only works with mistralv2, llama3 and phi3 models. Exiting."
     exit
 fi
 
