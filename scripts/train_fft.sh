@@ -26,10 +26,6 @@ else
     exit
 fi
 
-echo "Using Learning Rate ${LR} for ${MODEL_TYPE} model"
-
-export WANDB_PROJECT="panza-${current_user}"
-
 export PRETRAINED=${PANZA_GENERATIVE_MODEL}
 export CONFIG=${PANZA_FINETUNE_CONFIGS}/fft_panza.yaml
 
@@ -45,9 +41,9 @@ do
    export "$KEY"="$VALUE"
 done
 
-# some post-processing on the inputs
-export MAX_DURATION=${NUM_EPOCHS}ep
-export RUN_NAME=panza_${MODEL_TYPE}_${MODEL_PRECISION}-bs${BS}-fft-lr${LR}-epochs${NUM_EPOCHS}-wu${WARMUP}-seed${SEED}-${PREAMBLE_STR}-$RANDOM
+echo "Using Learning Rate ${LR} for ${MODEL_TYPE} model"
+
+export WANDB_PROJECT="panza-${PANZA_USERNAME}"
 
 if [ "$PANZA_FINETUNE_WITH_PREAMBLE" = 1 ]; then
   PREAMBLE_STR="PREAMBLE"
@@ -56,6 +52,10 @@ else
   PREAMBLE_STR=""
   PREPROCESSING_FN=panza.finetuning.preprocessing:panza_preprocessing_function
 fi
+
+# some post-processing on the inputs
+export MAX_DURATION=${NUM_EPOCHS}ep
+export RUN_NAME=panza_${MODEL_TYPE}_${MODEL_PRECISION}-bs${BS}-fft-lr${LR}-epochs${NUM_EPOCHS}-wu${WARMUP}-seed${SEED}-${PREAMBLE_STR}-$RANDOM
 
 # create directories to save the models
 mkdir -p ${BASE_SAVE_PATH}/models/

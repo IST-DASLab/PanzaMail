@@ -33,14 +33,10 @@ else
     exit
 fi
 
-echo "Using Learning Rate ${LR} and LoRA LR ${LORA_LR} for ${MODEL_TYPE} model"
-
-
 # hyper-parameters without default values
 export SPA_DENSITY=0.01 # the sparse adapters' density
 export LORA_R=8 # the low-rank adapters' rank
 
-export WANDB_PROJECT="panza-${current_user}"
 export PRETRAINED=${PANZA_GENERATIVE_MODEL}
 export CONFIG=${PANZA_FINETUNE_CONFIGS}/rosa_panza.yaml
 export NUM_CPU_THREADS=0 # useful for running of CPU, 0 means default the used by torch
@@ -58,6 +54,10 @@ do
 
    export "$KEY"="$VALUE"
 done
+
+echo "Using Learning Rate ${LR} and LoRA LR ${LORA_LR} for ${MODEL_TYPE} model"
+
+export WANDB_PROJECT="panza-${PANZA_USERNAME}"
 
 if [ "$PANZA_FINETUNE_WITH_PREAMBLE" = 1 ]; then
   PREAMBLE_STR="PREAMBLE"
