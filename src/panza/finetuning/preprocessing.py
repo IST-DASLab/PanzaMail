@@ -1,7 +1,10 @@
 import os
+import random
 from typing import Dict
 
-from panza.utils import prompting
+from langchain_core.documents import Document
+
+from panza.utils import prompting, rag
 
 SYSTEM_PREAMBLE_PATH = os.environ.get("PANZA_SYSTEM_PREAMBLE_PATH")
 USER_PREAMBLE_PATH = os.environ.get("PANZA_USER_PREAMBLE_PATH")
@@ -14,6 +17,20 @@ PROMPT_START_WRAPPER, PROMPT_END_WRAPPER, RESPONSE_START_WRAPPER, RESPONSE_END_W
     prompting.get_model_special_tokens(PANZA_GENERATIVE_MODEL)
 )
 
+PANZA_FINETUNE_WITH_RAG = int(os.environ.get("PANZA_FINETUNE_WITH_RAG")) == 1
+if PANZA_FINETUNE_WITH_RAG:
+    EMBEDDINGS_MODEL = os.environ.get("PANZA_EMBEDDING_MODEL")
+    DB_PATH = os.environ.get("PANZA_DATA_DIR")
+    INDEX_NAME = os.environ.get("PANZA_USERNAME")
+    EMBEDDINGS_MODEL = rag.get_embeddings_model(EMBEDDINGS_MODEL)
+    DB = rag.load_vector_db_from_disk(DB_PATH, INDEX_NAME, EMBEDDINGS_MODEL)
+    RAG_PREAMBLE_PATH = os.environ.get("PANZA_RAG_PREAMBLE_PATH")
+    RAG_PREAMBLE = prompting.load_preamble(RAG_PREAMBLE_PATH)
+    RAG_NUM_EMAILS = int(os.environ.get("PANZA_FINETUNE_RAG_NUM_EMAILS"))
+    RAG_PROB = float(os.environ.get("PANZA_FINETUNE_RAG_PROB"))
+    RAG_RELEVANCE_THRESHOLD = float(os.environ.get("PANZA_FINETUNE_RAG_RELEVANCE_THRESHOLD"))
+    PANZA_SEED = int(os.environ.get("PANZA_SEED"))
+    random.seed(PANZA_SEED)
 
 r"""Example custom preprocessing function.
 
@@ -46,6 +63,26 @@ format. We'll structure prompts and responses like this:
 """
 
 
+def filter_relevant_emails(relevant_emails):
+    # Random chance to not include any relevant emails
+    p = random.random()
+    if p > RAG_PROB:
+        relevant_emails = []
+        print("Skip RAG")
+        return relevant_emails
+
+    if not relevant_emails:
+        print("Relevant emails not found.")
+        return []
+
+    print("Don't skip")
+    relevant_emails = [r["email"] for r in relevant_emails if r["score"] >= RAG_RELEVANCE_THRESHOLD]
+    relevant_emails = [Document(page_content=email, metadata={}) for email in relevant_emails]
+    relevant_emails = relevant_emails[:RAG_NUM_EMAILS]
+    print(f"Found {len(relevant_emails)} relevant emails.")
+    return relevant_emails
+
+
 def panza_preprocessing_function(inp: Dict) -> Dict:
     try:
         prompt_raw = inp["summary"].split("\n\nInstruction: ")[-1]
@@ -60,7 +97,13 @@ def panza_preprocessing_function(inp: Dict) -> Dict:
 def panza_preprocessing_function_train_with_preamble(inp: Dict) -> Dict:
     try:
         prompt_raw = inp["summary"].split("\n\nInstruction: ")[-1]
-        prompt = prompting.create_prompt(prompt_raw, SYSTEM_PREAMBLE, USER_PREAMBLE)
+        if PANZA_FINETUNE_WITH_RAG:
+            relevant_emails = inp.get("relevant_emails", [])
+            relevant_emails = filter_relevant_emails(relevant_emails)
+            prompt = prompting.create_prompt(prompt_raw, SYSTEM_PREAMBLE, USER_PREAMBLE, RAG_PREAMBLE, relevant_emails)
+            print(prompt)
+        else:
+            prompt = prompting.create_prompt(prompt_raw, SYSTEM_PREAMBLE, USER_PREAMBLE)
         return {
             "prompt": PROMPT_START_WRAPPER + prompt + PROMPT_END_WRAPPER,
             "response": RESPONSE_START_WRAPPER + inp["email"] + RESPONSE_END_WRAPPER,
