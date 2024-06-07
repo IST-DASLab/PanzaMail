@@ -40,7 +40,11 @@ export PANZA_RAG_RELEVANCE_THRESHOLD=0.2 # emails whose relevance is above this 
 
 export PANZA_SEED=42 # the one true seed
 
-export PANZA_FINETUNE_WITH_PREAMBLE=1  # states whether preambles are used for fine-tuning; on by default
+export PANZA_FINETUNE_WITH_PREAMBLE=1  # states whether user and system preambles are used for fine-tuning; on by default
+export PANZA_FINETUNE_WITH_RAG=0  # states whether RAG preambles are used for fine-tuning; on by default
+export PANZA_FINETUNE_RAG_NUM_EMAILS=3  # maximum number of emails to use for RAG fine-tuning; 3 by default
+export PANZA_FINETUNE_RAG_PROB=0.55  # probability of using RAG context for fine-tuning; 0.5 by default
+export PANZA_FINETUNE_RAG_RELEVANCE_THRESHOLD=0.2  # emails whose relevance is above this threshold will be presented for RAG during fine-tuning
 export PANZA_DISABLE_RAG_INFERENCE=0  # RAG inference is on by default, since it's usually better
 
 export PANZA_WANDB_DISABLED=True  # disable Weights and Biases logging by default
