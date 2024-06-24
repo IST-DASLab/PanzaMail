@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export PANZA_EMAIL_ADDRESS="firstname.lastname@gmail.com"  # Change this to your email address!
+export PANZA_EMAIL_ADDRESS="jen.iofinova@gmail.com"  # Change this to your email address!
 export PANZA_USERNAME="${PANZA_EMAIL_ADDRESS%@*}"  # Removes everything after @; for the example above, it will be firstname.lastname
 
 export PANZA_WORKSPACE=$(dirname "$(dirname "$(realpath "$0")")");
