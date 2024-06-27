@@ -8,7 +8,7 @@
 #     targets and outputs, and is not computed on a per-example basis. The similarity is computed
 #     in the latent space of an LLM, by default GPT-2.
 
-
+import torch
 import json
 import os
 import re
@@ -20,7 +20,6 @@ from torchmetrics.text.rouge import ROUGEScore
 from torchmetrics.text.bleu import BLEUScore
 
 import numpy as np
-import torch
 import wandb
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
