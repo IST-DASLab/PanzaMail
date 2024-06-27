@@ -200,7 +200,7 @@ else
 fi
 
 # Running BLEU evaluation
-EVAL_SCRIPT=${PANZA_WORKSPACE}/src/panza/evaluation/evaluate_bleu_score.py
+EVAL_SCRIPT=${PANZA_WORKSPACE}/src/panza/evaluation/evaluation.py
 python ${EVAL_SCRIPT} \
   --model=${BASE_SAVE_PATH}/models/${RUN_NAME} \
   --system-preamble=${PANZA_SYSTEM_PREAMBLE_PATH} \
