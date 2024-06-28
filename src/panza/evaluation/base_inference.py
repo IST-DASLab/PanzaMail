@@ -59,7 +59,17 @@ def load_model_and_tokenizer(model_path, device, dtype, load_in_4bit):
         else None
     )
 
-    if os.path.exists(os.path.join(model_path, "adapter_config.json")):
+    if os.path.exists(os.path.join(model_path, "quantize_config.json")):
+        try:
+            from auto_gptq import AutoGPTQForCausalLM
+        except:
+            raise ImportError("Could not import auto-gptq. Please install from github.com/IST-DASLab/AutoGPTQRoSA/")
+        # it's GPTQ
+        print("found a gptq model.")
+        model = AutoGPTQForCausalLM.from_quantized(
+            model_path, device=device, torch_dtype=dtype, use_cuda_fp16=False, use_tritonv2=True, trust_remote_code=True
+        )
+    elif os.path.exists(os.path.join(model_path, "adapter_config.json")):
         print("found an adapter.")
         if load_in_4bit:
             model = AutoPeftModelForCausalLM.from_pretrained(

@@ -51,6 +51,8 @@ export PANZA_WANDB_DISABLED=True  # disable Weights and Biases logging by defaul
 
 export PYTHONPATH="$PANZA_WORKSPACE/src:$PYTHONPATH"
 
+export GPTQ_NUM_SAMPLES=16 # the number of samples to use for GPTQ
+
 # Optionally, set your HF_HOME and/or TRANSFORMERS_CACHE here.
 # export HF_HOME=
 # export TRANSFORMERS_CACHE=
