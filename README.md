@@ -65,7 +65,7 @@ The overall structure of Panza is as follows:
 2. Run `source prepare_env.sh`. This script will create a conda environment named `panza` and install the required packages.
 
 ### Docker
-Run the following commands to pull a docker image with all the dependencies installed.
+As an alternative to the conda option above, you can run the following commands to pull a docker image with all the dependencies installed.
 ```
 docker pull istdaslab/panzamail
 ```
