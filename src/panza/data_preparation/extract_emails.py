@@ -8,6 +8,7 @@ from os.path import join
 import langdetect
 
 CLEAN_EMAILS = []
+TRUNCATED_EMAILS_COUNTER = 0
 DISCARDED_EMAILS = {
     "non_english": [],
     "forwarded": [],
@@ -17,7 +18,7 @@ DISCARDED_EMAILS = {
 }
 
 SHORT_EMAIL_THRESHOLD = 10  # words
-
+LONG_EMAIL_THRESHOLD = 500 # words
 
 def extract_only_plain_text(msg_part):
     if msg_part.get_content_type() == "text/plain":
@@ -47,6 +48,11 @@ def remove_quoted_content(email_body):
     else:
         return email_body
 
+def truncate_long_emails(email_body):
+    if count_words(email_body) > LONG_EMAIL_THRESHOLD:
+        TRUNCATED_EMAILS_COUNTER += 1
+        return " ".join(email_body.split()[:LONG_EMAIL_THRESHOLD])
+    return email_body
 
 def remove_lines_starting_with_gt(text):
     lines = text.split("\n")
@@ -74,6 +80,7 @@ def filter_message(msg):
     plain_text = remove_quoted_content(plain_text)
     # sometimes remove_quoted_content misses, so making sure we remove lines with ">" at the start
     plain_text = remove_lines_starting_with_gt(plain_text)
+    plain_text = truncate_long_emails(plain_text)
 
     # check length before detecting language
     if count_words(plain_text) < SHORT_EMAIL_THRESHOLD:
@@ -138,6 +145,7 @@ def main():
         f"\n\t forwarded = {len(DISCARDED_EMAILS['forwarded'])}"
         f"\n\t cant_decode_utf8 = {len(DISCARDED_EMAILS['cant_decode_utf8'])}"
     )
+    print(f"# truncated emails = {TRUNCATED_EMAILS_COUNTER}")
 
     first_email = EMAIL[0]
     username = first_email[: first_email.find("@")]
