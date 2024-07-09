@@ -60,11 +60,13 @@ The overall structure of Panza is as follows:
 
 ## Installation
 
-### Conda
+### Option 1: Conda
 1. Make sure you have a version of [conda](https://docs.anaconda.com/free/miniconda/miniconda-install/) installed.
 2. Run `source prepare_env.sh`. This script will create a conda environment named `panza` and install the required packages.
 
-### Docker
+### Option 2: Docker
+Alternatively, instead of using Conda, you can also pull a docker image with all the dependencies installed.
+
 Run the following commands to pull a docker image with all the dependencies installed.
 ```
 docker pull istdaslab/panzamail
