@@ -22,12 +22,12 @@ def create_prompt(
     system_preamble: Text,
     user_preamble: Text,
     rag_preamble: Optional[Text] = None,
-    relevant_emails: Optional[List[Document]] = None,
+    relevant_texts: Optional[List[Document]] = None,
 ) -> Text:
 
-    if relevant_emails:
-        assert rag_preamble, "RAG preamble format must be provided if similar emails are provided."
-        rag_prompt = _create_rag_preamble_from_emails(rag_preamble, relevant_emails).strip()
+    if relevant_texts:
+        assert rag_preamble, "RAG preamble format must be provided if similar pieces of text are provided."
+        rag_prompt = _create_rag_preamble_from_texts(rag_preamble, relevant_texts).strip()
     else:
         rag_prompt = ""
 
@@ -46,35 +46,32 @@ def create_prompt(
     return prompt
 
 
-def _create_rag_preamble_from_emails(rag_preamble_format: Text, emails: List[Document]) -> Text:
-    rag_context = _create_rag_context_from_emails(emails)
+def _create_rag_preamble_from_texts(rag_preamble_format: Text, texts: List[Document]) -> Text:
+    rag_context = _create_rag_context_from_texts(texts)
     return rag_preamble_format.format(rag_context=rag_context)
 
 
-def _create_rag_context_from_emails(emails: List[Document]) -> Text:
-    """Creates a RAG context from a list of relevant e-mails.
+def _create_rag_context_from_texts(texts: List[Document]) -> Text:
+    """Creates a RAG context from a list of relevant pieces of text.
 
-    The e-mails are formatted as follows:
+    The texts are formatted as follows:
 
-    SUBJECT: <e-mail1 subject>
-    E-MAIL CONTENT:
-    <e-mail1 content>
+    TEXT CONTENT:
+    <text1 content>
 
     ---
 
-    SUBJECT: <e-mail2 subject>
-    E-MAIL CONTENT:
-    <e-mail2 content>
+    TEXT CONTENT:
+    <text2 content>
 
     ---
     ...
     """
 
     rag_context = ""
-    for email in emails:
+    for text in texts:
         rag_context += (
-            f"SUBJECT: {email.metadata['subject']}\n"
-            f"E-MAIL CONTENT:\n{email.page_content}\n\n---\n\n"
+            f"TEXT CONTENT:\n{text.page_content}\n\n---\n\n"
         )
 
     return rag_context
