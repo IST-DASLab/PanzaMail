@@ -1,5 +1,5 @@
 # crash in case of error
-trap 'trap - ERR RETURN; kill -INT $$ ; return' ERR RETURN
+trap 'trap - ERR EXIT; kill -INT $$ ; return' ERR EXIT
 
 conda create --name panza python=3.10 -y
 conda activate panza
