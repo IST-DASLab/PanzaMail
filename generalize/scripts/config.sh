@@ -1,7 +1,6 @@
 #!/bin/bash
 
-export PANZA_EMAIL_ADDRESS="firstname.lastname@gmail.com"  # Change this to your email address!
-export PANZA_USERNAME="${PANZA_EMAIL_ADDRESS%@*}"  # Removes everything after @; for the example above, it will be firstname.lastname
+export PANZA_USERNAME="[REPLACE ME!]"
 
 export PANZA_WORKSPACE=$(dirname "$(dirname "$(realpath "$0")")");
 export PANZA_DATA_DIR="$PANZA_WORKSPACE/data"  # where data is stored
@@ -36,15 +35,15 @@ fi
 
 export PANZA_EMBEDDING_MODEL="sentence-transformers/all-mpnet-base-v2" # embedding model for RAG; can be changed, trading off speed for quality
 
-export PANZA_RAG_RELEVANCE_THRESHOLD=0.2 # emails whose relevance is above this threshold will be presented for RAG 
+export PANZA_RAG_RELEVANCE_THRESHOLD=0.2 # pieces of text whose relevance is above this threshold will be presented for RAG 
 
 export PANZA_SEED=42 # the one true seed
 
 export PANZA_FINETUNE_WITH_PREAMBLE=1  # states whether user and system preambles are used for fine-tuning; on by default
 export PANZA_FINETUNE_WITH_RAG=0  # states whether RAG preambles are used for fine-tuning; on by default
-export PANZA_FINETUNE_RAG_NUM_EMAILS=3  # maximum number of emails to use for RAG fine-tuning; 3 by default
+export PANZA_FINETUNE_RAG_NUM_TEXTS=3  # maximum number of pieces of text to use for RAG fine-tuning; 3 by default
 export PANZA_FINETUNE_RAG_PROB=0.55  # probability of using RAG context for fine-tuning; 0.5 by default
-export PANZA_FINETUNE_RAG_RELEVANCE_THRESHOLD=0.2  # emails whose relevance is above this threshold will be presented for RAG during fine-tuning
+export PANZA_FINETUNE_RAG_RELEVANCE_THRESHOLD=0.2  # pieces of text whose relevance is above this threshold will be presented for RAG during fine-tuning
 export PANZA_DISABLE_RAG_INFERENCE=0  # RAG inference is on by default, since it's usually better
 
 export PANZA_WANDB_DISABLED=True  # disable Weights and Biases logging by default
