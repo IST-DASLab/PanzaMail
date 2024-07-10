@@ -16,75 +16,75 @@ from panza.utils import rag
 sys.path.pop(0)
 
 
-def retrieve_similar_emails(batch, db, num_emails):
-    emails = []
-    for email in batch:
+def retrieve_similar_texts(batch, db, num_texts):
+    texts = []
+    for text in batch:
         try:
-            relevant_emails = db._similarity_search_with_relevance_scores(
-                email["email"], k=num_emails
+            relevant_texts = db._similarity_search_with_relevance_scores(
+                text["text"], k=num_texts
             )
         except Exception as e:
             print(f"Error in RAG search: {e}")
-            relevant_emails = []
-            return relevant_emails
+            relevant_texts = []
+            return relevant_texts
 
-        relevant_emails = [
-            {"email": r[0].page_content, "score": r[1]}
-            for r in relevant_emails
-            if r[0].page_content not in email["email"]
+        relevant_texts = [
+            {"text": r[0].page_content, "score": r[1]}
+            for r in relevant_texts
+            if r[0].page_content not in text["text"]
         ]
-        email["relevant_emails"] = relevant_emails
-        emails.append(email)
+        text["relevant_emails"] = relevant_texts
+        texts.append(text)
 
-    return emails
+    return texts
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Get similar emails for Retrieval Augmented Fine Tuning (RAFT)"
+        description="Get similar pieces of text for Retrieval Augmented Fine Tuning (RAFT)"
     )
-    parser.add_argument("--path-to-emails", help="Path to the cleaned emails")
+    parser.add_argument("--path-to-inputs", help="Path to the cleaned pieces of text as input")
     parser.add_argument(
         "--embedding-model", type=str, default="sentence-transformers/all-mpnet-base-v2"
     )
     parser.add_argument("--db-path", type=str, default=None)
     parser.add_argument("--index-name", type=str, default=None)
     parser.add_argument("--batch-size", type=int, default=8)
-    parser.add_argument("--rag-num-emails", type=int, default=7)
+    parser.add_argument("--rag-num-texts", type=int, default=7)
     args = parser.parse_args()
 
-    assert args.path_to_emails.endswith(
+    assert args.path_to_inputs.endswith(
         ".jsonl"
-    ), f"Expecting a .jsonl file, but given = {args.path_to_emails}"
+    ), f"Expecting a .jsonl file, but given = {args.path_to_inputs}"
 
-    print(f"--> Reading emails from: {args.path_to_emails}")
+    print(f"--> Reading pieces of text from: {args.path_to_inputs}")
 
-    # Read emails
-    with open(args.path_to_emails, "r") as f:
+    # Read pieces of text
+    with open(args.path_to_inputs, "r") as f:
         lines = f.readlines()
         json_lines = [json.loads(line.strip(",")) for line in lines]
-        print(f"--> # emails = {len(json_lines)}")
+        print(f"--> # pieces of text = {len(json_lines)}")
 
     embeddings_model = rag.get_embeddings_model(args.embedding_model)
     db = rag.load_vector_db_from_disk(args.db_path, args.index_name, embeddings_model)
 
-    path_for_outputs = args.path_to_emails.rsplit(".jsonl", 1)[0] + "_raft.jsonl"
-    num_processed_emails = 0
+    path_for_outputs = args.path_to_inputs.rsplit(".jsonl", 1)[0] + "_raft.jsonl"
+    num_processed_inputs = 0
     start_time = time.time()
     with open(path_for_outputs, "w") as f:
         for i in tqdm(range(0, len(json_lines), args.batch_size)):
             # TODO(armand): Fix this print for batched inference
             print(f"--> Processing batch {i}/{len(json_lines)}")
             batch = json_lines[i : i + args.batch_size]
-            emails = retrieve_similar_emails(batch, db, args.rag_num_emails)
-            num_processed_emails += len(emails)
+            texts = retrieve_similar_texts(batch, db, args.rag_num_emails)
+            num_processed_inputs += len(texts)
 
-            for item in emails:
+            for item in texts:
                 f.write(json.dumps(item))
                 f.write("\n")
 
     elapsed_time = time.time() - start_time
-    print(f"{elapsed_time:.2f} seconds to process {len(json_lines)} emails.")
+    print(f"{elapsed_time:.2f} seconds to process {len(json_lines)} texts.")
 
 
 if __name__ == "__main__":
