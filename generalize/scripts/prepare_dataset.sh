@@ -24,8 +24,8 @@ USE_4BIT_QUANT=$([ "${LOAD_IN_4BIT}" = 1 ] && echo "--load-in-4bit" || echo "")
 USE_FP32_COMPUTE=$([ "${RUN_FP32}" = 1 ] && echo "--fp32" || echo "")
 
 # Create synthetic instructions (summaries) for the pieces of text
-python ../src/panza/data_preparation/summarize_emails.py \
-    --path-to-emails="${PANZA_DATA_DIR}/${PANZA_USERNAME}_clean.jsonl" \
+python ../src/panza/data_preparation/summarize_texts.py \
+    --path-to-inputs="${PANZA_DATA_DIR}/${PANZA_USERNAME}_clean.jsonl" \
     --prompt-file="${PANZA_WORKSPACE}/src/panza/data_preparation/summarization_prompt.txt" \
     --batch-size=${PANZA_SUMMARIZATION_BATCH_SIZE} ${USE_4BIT_QUANT} ${USE_FP32_COMPUTE} &&
 

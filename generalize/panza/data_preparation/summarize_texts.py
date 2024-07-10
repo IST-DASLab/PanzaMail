@@ -55,17 +55,17 @@ class LLMSummarizer:
         self.top_k = top_k
         self.top_p = top_p
 
-    def prepare_batch_for_inference(self, emails: List[Dict]) -> List[Text]:
+    def prepare_batch_for_inference(self, texts: List[Dict]) -> List[Text]:
         batch_with_prompt = []
-        for item in emails:
-            prompt_with_email = self.summarization_prompt.format(email=item["email"])
-            batch_with_prompt.append([{"role": "user", "content": prompt_with_email}])
+        for item in texts:
+            prompt_with_text = self.summarization_prompt.format(text=item["text"])
+            batch_with_prompt.append([{"role": "user", "content": prompt_with_text}])
         return batch_with_prompt
 
-    def run_inference(self, emails: List[Dict]) -> List[Dict]:
+    def run_inference(self, texts: List[Dict]) -> List[Dict]:
         gc.collect()
         torch.cuda.empty_cache()
-        batch = self.prepare_batch_for_inference(emails)
+        batch = self.prepare_batch_for_inference(texts)
 
         model_inputs = self.tokenizer.apply_chat_template(
             batch,
@@ -100,10 +100,10 @@ class LLMSummarizer:
         return summaries
 
 
-def generate_synthetic_instructions(emails: List[Dict], summarizer: LLMSummarizer):
-    summarized_emails = []
+def generate_synthetic_instructions(texts: List[Dict], summarizer: LLMSummarizer):
+    summarized_texts = []
 
-    summaries = summarizer.run_inference(emails)
+    summaries = summarizer.run_inference(texts)
 
     for j, generated_text in enumerate(summaries):
 
@@ -118,31 +118,30 @@ def generate_synthetic_instructions(emails: List[Dict], summarizer: LLMSummarize
             continue
 
         instruction = generated_text.split(keyword, 1)[1]
-        summarized_emails.append(
+        summarized_texts.append(
             {
-                "email": emails[j]["email"],
-                "subject": emails[j]["subject"],
+                "text": texts[j]["text"],
                 "summary": instruction,
             }
         )
 
-    return summarized_emails
+    return summarized_texts
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Transform emails into dataset for PANZA finetuning"
+        description="Transform pieces of text into dataset for PANZA finetuning"
     )
-    parser.add_argument("--path-to-emails", help="Path to the cleaned emails")
+    parser.add_argument("--path-to-inputs", help="Path to the cleaned pieces of text input")
     parser.add_argument("--prompt-file", help="A path to file with prompt text")
     parser.add_argument("--batch-size", type=int, help="Inference batch size")
     parser.add_argument("--load-in-4bit", default=False, action='store_true', help="Wheather to load the model in 4bit precision (BNB)")
     parser.add_argument("--fp32", default=False, action='store_true', help="Whether to use FP32 precision for computation")
     args = parser.parse_args()
 
-    assert args.path_to_emails.endswith(
+    assert args.path_to_inputs.endswith(
         ".jsonl"
-    ), f"Expecting a .jsonl file, but given = {args.path_to_emails}"
+    ), f"Expecting a .jsonl file, but given = {args.path_to_inputs}"
 
     assert os.path.exists(
         args.prompt_file
@@ -150,7 +149,7 @@ def main():
     with open(args.prompt_file, "r") as file:
         summarization_prompt = file.read()
 
-    print(f"--> Reading emails from: {args.path_to_emails}")
+    print(f"--> Reading inputs from: {args.path_to_inputs}")
     print(f"--> Processing with batch_size {args.batch_size} and prompt = {summarization_prompt}")
     print(
         f"--> params for sampling:"
@@ -159,11 +158,11 @@ def main():
         f"\t top_p = {TOP_P}"
     )
 
-    # Read emails
-    with open(args.path_to_emails, "r") as f:
+    # Read inputs
+    with open(args.path_to_inputs, "r") as f:
         lines = f.readlines()
         json_lines = [json.loads(line.strip(',')) for line in lines]
-        print(f"--> # emails = {len(json_lines)}")
+        print(f"--> # texts = {len(json_lines)}")
 
     summarizer = LLMSummarizer(
         model=MDL,
@@ -176,24 +175,24 @@ def main():
     )
 
     # Generate synthetic instructions
-    path_for_outputs = args.path_to_emails.rsplit(".jsonl", 1)[0] + "_summarized.jsonl"
-    num_processed_emails = 0
+    path_for_outputs = args.path_to_inputs.rsplit(".jsonl", 1)[0] + "_summarized.jsonl"
+    num_processed_texts = 0
     start_time = time.time()
     with open(path_for_outputs, "w") as f:
         for i in tqdm(range(0, len(json_lines), args.batch_size)):
             # TODO(armand): Fix this print for batched inference
             print(f"--> Processing batch {i}/{len(json_lines)}")
             batch = json_lines[i : i + args.batch_size]
-            summarized_emails = generate_synthetic_instructions(batch, summarizer)
-            num_processed_emails += len(summarized_emails)
+            summarized_texts = generate_synthetic_instructions(batch, summarizer)
+            num_processed_texts += len(summarized_texts)
 
-            # Write the summarized emails to a file
-            for item in summarized_emails:
+            # Write the summarized texts to a file
+            for item in summarized_texts:
                 f.write(json.dumps(item))
                 f.write("\n")
 
     elapsed_time = time.time() - start_time
-    print(f"{elapsed_time:.2f} seconds to process {len(json_lines)} emails.")
+    print(f"{elapsed_time:.2f} seconds to process {len(json_lines)} pieces of text.")
 
 
 if __name__ == "__main__":
