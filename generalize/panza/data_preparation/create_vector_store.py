@@ -9,23 +9,23 @@ from langchain_core.documents import Document
 from panza.utils import rag
 
 
-def load_emails(path: str) -> List[Dict]:
+def load_inputs(path: str) -> List[Dict]:
     with open(path, "r") as f:
         lines = f.readlines()
 
-    emails = [json.loads(line) for line in lines]
+    inputs = [json.loads(line) for line in lines]
 
-    return emails
+    return inputs
 
 
-def process_emails(emails: List[Dict], chunk_size: int, chunk_overlap: int) -> List[Document]:
-    # Convert e-mails to langchain documents
+def process_inputs(inputs: List[Dict], chunk_size: int, chunk_overlap: int) -> List[Document]:
+    # Convert inputs to langchain documents
     documents = [
-        Document(page_content=email["email"], metadata={"subject": email["subject"]})
-        for email in emails
+        Document(page_content=text["text"])
+        for text in inputs
     ]
 
-    # Split long e-mails into text chuncks
+    # Split long pieces of text into chuncks
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size, chunk_overlap=chunk_overlap
     )
@@ -37,8 +37,8 @@ def process_emails(emails: List[Dict], chunk_size: int, chunk_overlap: int) -> L
 def main():
     parser = argparse.ArgumentParser()
 
-    parser = argparse.ArgumentParser(description="Store emails in a embeddings vector DB.")
-    parser.add_argument("--path-to-emails", help="Path to the cleaned emails")
+    parser = argparse.ArgumentParser(description="Store the pieces of text in a embeddings vector DB.")
+    parser.add_argument("--path-to-inputs", help="Path to the cleaned pieces of text as input")
     parser.add_argument("--chunk-size", type=int, default=3000)
     parser.add_argument("--chunk-overlap", type=int, default=3000)
     parser.add_argument("--db-path", type=str)
@@ -49,12 +49,12 @@ def main():
 
     args = parser.parse_args()
 
-    # Load emails
-    emails = load_emails(args.path_to_emails)
-    print(f"Loaded {len(emails)} emails.")
+    # Load the pieces of text
+    texts = load_inputs(args.path_to_inputs)
+    print(f"Loaded {len(texts)} pieces of text.")
 
-    # Process emails
-    documents = process_emails(emails, args.chunk_size, args.chunk_overlap)
+    # Process the pieces of text
+    documents = process_inputs(texts, args.chunk_size, args.chunk_overlap)
     print(f"Obtained {len(documents)} text chuncks.")
 
     # Initialize embeddings model

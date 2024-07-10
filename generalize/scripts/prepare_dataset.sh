@@ -38,7 +38,7 @@ python ../src/panza/data_preparation/split_data.py \
 
 # Create vector store with text embeddings
 python ../src/panza/data_preparation/create_vector_store.py \
-    --path-to-emails="${PANZA_DATA_DIR}/train.jsonl" \
+    --path-to-inputs="${PANZA_DATA_DIR}/train.jsonl" \
     --chunk-size=${CHUNK_SIZE} \
     --chunk-overlap=${CHUNK_OVERLAP} \
     --db-path=${PANZA_DATA_DIR} \
