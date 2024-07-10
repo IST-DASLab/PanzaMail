@@ -33,7 +33,7 @@ def get_base_inference_args_parser():
     )
     parser.add_argument("--db-path", type=str, default=None)
     parser.add_argument("--index-name", type=str, default=None)
-    parser.add_argument("--rag-num-emails", type=int, default=7)
+    parser.add_argument("--rag-num-texts", type=int, default=7)
     parser.add_argument("--device", type=str, default="cuda:0")
     parser.add_argument("--dtype", type=str, default="bf16")
     parser.add_argument("--nthreads", type=int, default=None)
@@ -97,7 +97,7 @@ def run_inference(
     user_preamble,
     rag_preamble,
     rag_relevance_threshold,
-    rag_num_emails,
+    rag_num_texts,
     use_rag,
     db,
     max_new_tokens,
@@ -110,15 +110,15 @@ def run_inference(
     batch = []
     prompts = []
     for instruction in instructions:
-        relevant_emails = []
+        relevant_texts = []
         if use_rag:
-            relevant_emails = db._similarity_search_with_relevance_scores(
-                instruction, k=rag_num_emails
+            relevant_texts = db._similarity_search_with_relevance_scores(
+                instruction, k=rag_num_texts
             )
-            relevant_emails = [r[0] for r in relevant_emails if r[1] >= rag_relevance_threshold]
+            relevant_texts = [r[0] for r in relevant_texts if r[1] >= rag_relevance_threshold]
 
         prompt = prompting.create_prompt(
-            instruction, system_preamble, user_preamble, rag_preamble, relevant_emails
+            instruction, system_preamble, user_preamble, rag_preamble, relevant_texts
         )
         prompts.append(prompt)
         messages = [{"role": "user", "content": prompt}]

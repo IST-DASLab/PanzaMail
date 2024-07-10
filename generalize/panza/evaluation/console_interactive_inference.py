@@ -46,7 +46,7 @@ def main():
             user_preamble=user_preamble,
             rag_preamble=rag_preamble,
             rag_relevance_threshold=args.rag_relevance_threshold,
-            rag_num_emails=args.rag_num_emails,
+            rag_num_texts=args.rag_num_texts,
             use_rag=args.use_rag,
             db=db if args.use_rag else None,
             max_new_tokens=args.max_new_tokens,
@@ -58,7 +58,7 @@ def main():
         )
 
         print("Processed input:", prompts[0])
-        print("Generated email", outputs[0])
+        print("Generated text", outputs[0])
 
 
 if __name__ == "__main__":

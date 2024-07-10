@@ -66,10 +66,10 @@ def main():
     grouped_golden = {}
     for entry in golden_lines:
         if entry["summary"] in grouped_golden:
-            grouped_golden[entry["summary"]]["templates"].append(entry["email"])
+            grouped_golden[entry["summary"]]["templates"].append(entry["text"])
         else:
             grouped_golden[entry["summary"]] = {}
-            grouped_golden[entry["summary"]]["templates"] = [(entry["email"])]
+            grouped_golden[entry["summary"]]["templates"] = [(entry["text"])]
 
     print("Evaluating with batch size", args.batch_size)
 
@@ -93,7 +93,7 @@ def main():
                 user_preamble=user_preamble,
                 rag_preamble=rag_preamble,
                 rag_relevance_threshold=args.rag_relevance_threshold,
-                rag_num_emails=args.rag_num_emails,
+                rag_num_texts=args.rag_num_texts,
                 use_rag=args.use_rag,
                 db=db if args.use_rag else None,
                 max_new_tokens=args.max_new_tokens,
@@ -105,10 +105,11 @@ def main():
             )
 
             # Remove some boilerplate added by instruction-tuned models w/out finetuning.
-            outputs = [o.replace("Here is the email:\n", "") for o in outputs]
+            outputs = [o.replace("Here is the text:\n", "") for o in outputs]
+            # TODO(sean): determine if these two lines for subject below are necessary
             outputs = [re.sub(r'SUBJECT:.*\n', "", o) for o in outputs]
             outputs = [re.sub(r'Subject:.*\n', "", o) for o in outputs]
-            outputs = [re.sub(r'E-MAIL CONTENT:.*\n', "", o) for o in outputs]
+            outputs = [re.sub(r'TEXT CONTENT:.*\n', "", o) for o in outputs]
             for j, prompt in enumerate(prompts):
                 # We clean up the strings for the BLEU and ROUGE scores.
                 punc_table = str.maketrans({key: None for key in string.punctuation})
