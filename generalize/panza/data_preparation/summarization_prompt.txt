@@ -1,0 +1,3 @@
+Summarize the following email that I wrote, in an imperative form, in one or two or maximum three sentences, and make sure to include relevant information, without copying the email content itself. The summary should look like an instruction directing someone to write the same email, and start with Instruction: 
+Here is the email text:
+{email} 

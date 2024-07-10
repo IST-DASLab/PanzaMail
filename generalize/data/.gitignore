@@ -1,0 +1,4 @@
+# Ignore everything in this directory as personal information will be stored here
+*
+# Except this file
+!.gitignore
