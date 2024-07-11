@@ -36,7 +36,7 @@ Its main features are as follows:
 
 ### :film_projector: Step 1: Data playback
 
-For most email clients, it is possible to download a user's past emails in a machine-friendly .mbox format. For example, GMail allows you to do this via [Google Takeout](takeout.google.com), whereas Thunderbird allows one to do this via various plugins. 
+For most email clients, it is possible to download a user's past emails in a machine-friendly .mbox format. For example, GMail allows you to do this via [Google Takeout](https://takeout.google.com), whereas Thunderbird allows one to do this via various plugins. 
 
 One key part of Panza is a dataset-generation technique we call **data playback**:  Given some of your past emails in .mbox format, we automatically create a training set for Panza by using a pretrained LLM to summarize the emails in instruction form; each email becomes a `(synthetic instruction, real email)` pair.
 Given a dataset consisting of all pairs, we use these pairs to "play back" your sent emails: the LLM receives only the instruction, and has to generate the "ground truth" email as a training target.
@@ -65,7 +65,7 @@ The overall structure of Panza is as follows:
 2. Run `source prepare_env.sh`. This script will create a conda environment named `panza` and install the required packages.
 
 ### Docker
-Run the following commands to pull a docker image with all the dependencies installed.
+As an alternative to the conda option above, you can run the following commands to pull a docker image with all the dependencies installed.
 ```
 docker pull istdaslab/panzamail
 ```
