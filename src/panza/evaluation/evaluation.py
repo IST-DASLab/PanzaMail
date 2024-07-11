@@ -15,6 +15,7 @@ import re
 import string
 import sys
 
+from bert_score import score as bert_score
 from evaluate import load
 from torchmetrics.text.rouge import ROUGEScore
 from torchmetrics.text.bleu import BLEUScore
@@ -26,6 +27,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from panza.evaluation import base_inference
 from panza.utils import prompting, rag
+
+
 
 sys.path.pop(0)
 
@@ -45,6 +48,7 @@ def main():
     bleu3 = BLEUScore(n_gram=3)
     bleu4 = BLEUScore(n_gram=4)
     mauve = load('mauve')
+    bertscore = load('bertscore')
 
     if args.nthreads is not None:
         torch.set_num_threads(args.nthreads)
@@ -150,9 +154,22 @@ def main():
     # queries per output. (We don't use this for anything now).
     flattened_golden = []
     flattened_outputs = []
+    def cleanup(s):
+        # Remove extra whitespace and punctuation.
+        return " ".join(s.lower().translate(str.maketrans('', '', string.punctuation)).split())
+        
     for prompt_info in prompt_scores.values():
         flattened_golden += ([prompt_info["golden"][0]])*len(prompt_info['output'])
         flattened_outputs += prompt_info['output']
+    bert_results = bertscore.compute(predictions=[cleanup(x) for x in flattened_outputs],
+                                     references=[cleanup(x) for x in flattened_golden], lang="en",
+                                     idf=True, batch_size=4,
+                                     rescale_with_baseline=True,
+                                     model_type="distilbert-base-uncased" )
+    means["bert_P"] = np.mean(bert_results["precision"])
+    means["bert_R"] = np.mean(bert_results["recall"])
+    means["bert_F1"] = np.mean(bert_results["f1"])
+    print("BERT scores p/r/f1", means["bert_P"], means["bert_R"], means["bert_F1"])
     mauve_score = mauve.compute(predictions=flattened_outputs, references=flattened_golden) 
     print("MAUVE score", mauve_score)
     means["MAUVE"] = mauve_score.mauve
