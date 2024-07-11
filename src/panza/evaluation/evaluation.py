@@ -15,7 +15,6 @@ import re
 import string
 import sys
 
-from bert_score import score as bert_score
 from evaluate import load
 from torchmetrics.text.rouge import ROUGEScore
 from torchmetrics.text.bleu import BLEUScore
