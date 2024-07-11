@@ -6,7 +6,7 @@ conda activate panza
 
 conda install pytorch==2.2.2 torchvision torchaudio pytorch-cuda=12.1 -c pytorch -c nvidia -y
 
-pip install langdetect langchain langchain-community sentence-transformers faiss-cpu fire mauve-text evaluate torchmetrics gradio cmake packaging nltk
+pip install langdetect langchain langchain-community sentence-transformers faiss-cpu fire bert-score mauve-text evaluate torchmetrics gradio cmake packaging nltk
 
 pip install git+https://github.com/IST-DASLab/llm-foundry
 pip install git+https://github.com/IST-DASLab/peft-rosa.git@grad_quant
