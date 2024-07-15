@@ -33,7 +33,7 @@ def retrieve_similar_texts(batch, db, num_texts):
             for r in relevant_texts
             if r[0].page_content not in text["text"]
         ]
-        text["relevant_emails"] = relevant_texts
+        text["relevant_texts"] = relevant_texts
         texts.append(text)
 
     return texts
@@ -76,7 +76,7 @@ def main():
             # TODO(armand): Fix this print for batched inference
             print(f"--> Processing batch {i}/{len(json_lines)}")
             batch = json_lines[i : i + args.batch_size]
-            texts = retrieve_similar_texts(batch, db, args.rag_num_emails)
+            texts = retrieve_similar_texts(batch, db, args.rag_num_texts)
             num_processed_inputs += len(texts)
 
             for item in texts:
