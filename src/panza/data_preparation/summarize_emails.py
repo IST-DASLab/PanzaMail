@@ -123,6 +123,8 @@ def generate_synthetic_instructions(emails: List[Dict], summarizer: LLMSummarize
                 "email": emails[j]["email"],
                 "subject": emails[j]["subject"],
                 "summary": instruction,
+                "thread": emails[j]["thread"],
+                "date": emails[j]["date"],
             }
         )
 
