@@ -3,6 +3,7 @@
 source config.sh
 
 TRAIN_RATIO=0.8
+SPLIT_TYPE="chronological"  # random or chronological
 
 CHUNK_SIZE=3000
 CHUNK_OVERLAP=3000
@@ -34,6 +35,7 @@ python ../src/panza/data_preparation/split_data.py \
     --data-path="${PANZA_DATA_DIR}/${PANZA_USERNAME}_clean_summarized.jsonl" \
     --output-data-dir=${PANZA_DATA_DIR} \
     --train-ratio=${TRAIN_RATIO} \
+    --split-type=${SPLIT_TYPE} \
     --seed=${PANZA_SEED} &&
 
 # Create vector store with emails embeddings
