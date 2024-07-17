@@ -2,9 +2,9 @@ import argparse
 import json
 import mailbox
 import re
+from email.utils import parsedate_to_datetime
 from os import makedirs
 from os.path import join
-import re
 
 import langdetect
 
@@ -142,19 +142,20 @@ def main():
         print(f"--> processing {i}/{n_emails} <--")
         # Filter messages sent from your email address
         if message["from"] and any(email in message["from"] for email in EMAIL):
+            date = parsedate_to_datetime(message["Date"]).isoformat()
             if message.is_multipart():
                 for part in message.walk():
                     filtered_msg = filter_message(part)
                     if filtered_msg is not None:
                         print(filtered_msg)
                         main_email, thread = filtered_msg
-                        CLEAN_EMAILS.append({"email": main_email, "thread": thread, "subject": message["Subject"]})
+                        CLEAN_EMAILS.append({"email": main_email, "thread": thread, "subject": message["Subject"], "date": date})
             else:
                 filtered_msg = filter_message(message)
                 if filtered_msg is not None:
                     print(filtered_msg)
                     main_email, thread = filtered_msg
-                    CLEAN_EMAILS.append({"email": main_email, "thread": thread, "subject": message["Subject"]})
+                    CLEAN_EMAILS.append({"email": main_email, "thread": thread, "subject": message["Subject"], "date": date})
 
     print(f"\n---> [Cleaning stats] <---")
     print(f"# clean emails = {len(CLEAN_EMAILS)}")
