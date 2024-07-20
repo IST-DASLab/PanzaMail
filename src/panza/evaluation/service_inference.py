@@ -62,18 +62,18 @@ def predict(user_input):
 
 @app.route('/generate', methods=['POST'])
 def generate_text():
-    checkApiKey()
+    if not isValidApiKey():
+        return jsonify({"error": "Invalid API Key"}), 401
     data = request.get_json()
     print(data)
     print(data["text"])
     output = predict(data["text"])
     return jsonify(generated_text=output)
 
-def checkApiKey():
+def isValidApiKey():
     api_key = request.headers.get('x-api-key')
     valid_api_keys = os.getenv('API_KEYS').split(',')
-    if api_key not in valid_api_keys:
-        os.abort(401)  # Unauthorized
+    return api_key in valid_api_keys
     
 
 if __name__ == '__main__':
