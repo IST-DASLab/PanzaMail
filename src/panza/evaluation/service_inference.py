@@ -62,12 +62,19 @@ def predict(user_input):
 
 @app.route('/generate', methods=['POST'])
 def generate_text():
+    checkApiKey()
     data = request.get_json()
     print(data)
     print(data["text"])
     output = predict(data["text"])
     return jsonify(generated_text=output)
 
+def checkApiKey():
+    api_key = request.headers.get('x-api-key')
+    valid_api_keys = os.getenv('API_KEYS').split(',')
+    if api_key not in valid_api_keys:
+        os.abort(401)  # Unauthorized
+    
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
