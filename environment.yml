@@ -1,0 +1,24 @@
+name: panza
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.10
+  - langdetect
+  - langchain
+  - langchain-community
+  - sentence-transformers
+  - faiss-cpu
+  - fire
+  - evaluate
+  - torchmetrics
+  - gradio
+  - cmake
+  - packaging
+  - nltk
+  - pip
+  - pip:
+    - mauve-text
+    - git+https://github.com/IST-DASLab/llm-foundry
+    - git+https://github.com/IST-DASLab/peft-rosa.git@grad_quant
+    - spops_sm_80

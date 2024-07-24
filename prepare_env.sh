@@ -1,13 +1,9 @@
-# crash in case of error
-trap 'trap - ERR RETURN; kill -INT $$ ; return' ERR RETURN
+#!/bin/bash
 
-conda create --name panza python=3.10 -y
-conda activate panza
+# Exit immediately if a command exits with a non-zero status
+set -e
 
-conda install pytorch==2.2.2 torchvision torchaudio pytorch-cuda=12.1 -c pytorch -c nvidia -y
+# Create and activate the new environment from the environment.yml file
+conda env create -f environment.yml
 
-pip install langdetect langchain langchain-community sentence-transformers faiss-cpu fire mauve-text evaluate torchmetrics gradio cmake packaging nltk
-
-pip install git+https://github.com/IST-DASLab/llm-foundry
-pip install git+https://github.com/IST-DASLab/peft-rosa.git@grad_quant
-pip install spops_sm_80
+echo "Setup complete. To activate the environment, run 'conda activate panza'"
