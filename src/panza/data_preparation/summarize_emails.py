@@ -17,6 +17,7 @@ from panza.utils import prompting
 sys.path.pop(0)
 
 MDL = os.environ.get("PANZA_GENERATIVE_MODEL")
+MDL_TYPE = os.environ.get("MODEL_TYPE")
 TEMP = 0.7
 TOP_P = 0.7
 TOP_K = 50
@@ -43,7 +44,10 @@ class LLMSummarizer:
             model, model_max_length=self.model.config.max_position_embeddings, trust_remote_code=True
         )
         self.tokenizer.padding_side = "left"
-        self.tokenizer.pad_token = self.tokenizer.eos_token
+        if MDL_TYPE == "gemma2":
+            self.tokenizer.pad_token = self.tokenizer.bos_token
+        else:
+            self.tokenizer.pad_token = self.tokenizer.eos_token
         self.summarization_prompt = summarization_prompt
 
         _, self.prompt_end_wrapper, _, self.response_end_wrapper = (

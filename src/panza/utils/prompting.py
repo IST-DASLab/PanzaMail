@@ -17,6 +17,11 @@ PHI3_PROMPT_END_WRAPPER = "<|end|><|assistant|> "
 PHI3_RESPONSE_START_WRAPPER = ""
 PHI3_RESPONSE_END_WRAPPER = "<|end|>"
 
+GEMMA2_PROMPT_START_WRAPPER = "<bos><start_of_turn>user\n"
+GEMMA2_PROMPT_END_WRAPPER = "<end_of_turn>\n<start_of_turn>model\n"
+GEMMA2_RESPONSE_START_WRAPPER = ""
+GEMMA2_RESPONSE_END_WRAPPER = "<end_of_turn>"
+
 def create_prompt(
     user_input: Text,
     system_preamble: Text,
@@ -126,6 +131,11 @@ def get_model_special_tokens(model_name):
         prompt_end_wrapper = PHI3_PROMPT_END_WRAPPER
         response_start_wrapper = PHI3_RESPONSE_START_WRAPPER
         response_end_wrapper = PHI3_RESPONSE_END_WRAPPER
+    elif "gemma" in model_name.lower():
+        prompt_start_wrapper = GEMMA2_PROMPT_START_WRAPPER
+        prompt_end_wrapper = GEMMA2_PROMPT_END_WRAPPER
+        response_start_wrapper = GEMMA2_RESPONSE_START_WRAPPER
+        response_end_wrapper = GEMMA2_RESPONSE_END_WRAPPER
     else:
         raise ValueError(f"Presets missing for prompting model {model_name}")
 
