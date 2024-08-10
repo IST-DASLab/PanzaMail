@@ -21,6 +21,7 @@ export MODEL_PRECISION=bf16 # precision at which the base model is stored; optio
 # export PANZA_GENERATIVE_MODEL="mistralai/Mistral-7B-Instruct-v0.2"
 export PANZA_GENERATIVE_MODEL="ISTA-DASLab/Meta-Llama-3-8B-Instruct"
 # export PANZA_GENERATIVE_MODEL="microsoft/Phi-3-mini-4k-instruct"
+# export PANZA_GENERATIVE_MODEL="Qwen/Qwen2-1.5B-Instruct"
 
 lowercased=$(echo "$PANZA_GENERATIVE_MODEL" | tr '[:upper:]' '[:lower:]')
 if [[ ${lowercased} == *llama* ]]; then
@@ -29,6 +30,8 @@ elif [[ ${lowercased} == *mistral* ]]; then
     export MODEL_TYPE=mistralv2
 elif [[ ${lowercased} == *phi* ]]; then
     export MODEL_TYPE=phi3
+elif [[ ${lowercased} == *qwen* ]]; then
+    export MODEL_TYPE=qwen
 else
     echo "Model type ${PANZA_GENERATIVE_MODEL} not recognized! Panza only works with Mistral and Llama3 models. Exiting."
     exit

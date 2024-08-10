@@ -17,6 +17,11 @@ PHI3_PROMPT_END_WRAPPER = "<|end|><|assistant|> "
 PHI3_RESPONSE_START_WRAPPER = ""
 PHI3_RESPONSE_END_WRAPPER = "<|end|>"
 
+QWEN_PROMPT_START_WRAPPER = "<|im_start|>user\n"
+QWEN_PROMPT_END_WRAPPER = "<|im_end|>\n<|im_start|>assistant\n"
+QWEN_RESPONSE_START_WRAPPER = ""
+QWEN_RESPONSE_END_WRAPPER = "<|im_end|>"
+
 def create_prompt(
     user_input: Text,
     system_preamble: Text,
@@ -126,6 +131,11 @@ def get_model_special_tokens(model_name):
         prompt_end_wrapper = PHI3_PROMPT_END_WRAPPER
         response_start_wrapper = PHI3_RESPONSE_START_WRAPPER
         response_end_wrapper = PHI3_RESPONSE_END_WRAPPER
+    elif "qwen" in model_name.lower():
+        prompt_start_wrapper = QWEN_PROMPT_START_WRAPPER
+        prompt_end_wrapper = QWEN_PROMPT_END_WRAPPER
+        response_start_wrapper = QWEN_RESPONSE_START_WRAPPER
+        response_end_wrapper = QWEN_RESPONSE_END_WRAPPER
     else:
         raise ValueError(f"Presets missing for prompting model {model_name}")
 

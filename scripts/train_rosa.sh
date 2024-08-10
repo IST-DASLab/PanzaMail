@@ -28,6 +28,9 @@ elif [[ ${MODEL_TYPE} == mistralv2 ]]; then
 elif [[ ${MODEL_TYPE} == phi3 ]]; then
     export LR=1e-5 # learning rate
     export LORA_LR=1e-5 # a separate learning rate for the low-rank adapters
+elif [[ ${MODEL_TYPE} == qwen ]]; then
+    export LR=1e-5
+    export LORA_LR=1e-5
 else
     echo "Model type ${MODEL_TYPE} not recognized! Panza only works with mistralv2, llama3 and phi3 models. Exiting."
     exit
