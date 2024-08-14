@@ -10,6 +10,7 @@ from transformers import (AutoModelForCausalLM, AutoTokenizer,
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from panza.utils import prompting
+from panza.utils.documents import Email
 
 sys.path.pop(0)
 
@@ -21,6 +22,7 @@ def get_base_inference_args_parser():
     parser.add_argument("--system-preamble", type=str, default=None)
     parser.add_argument("--user-preamble", type=str, default=None)
     parser.add_argument("--rag-preamble", type=str, default=None)
+    parser.add_argument("--thread-preamble", type=str, default=None)
     parser.add_argument("--best", action="store_true", default=False)
     parser.add_argument("--temperature", type=float, default=0.7)
     parser.add_argument("--top-k", type=int, default=50)
@@ -98,6 +100,7 @@ def run_inference(
     rag_preamble,
     rag_relevance_threshold,
     rag_num_emails,
+    thread_preamble,
     use_rag,
     db,
     max_new_tokens,
@@ -109,16 +112,21 @@ def run_inference(
 ):
     batch = []
     prompts = []
-    for instruction in instructions:
+    for instruction, thread in instructions:
         relevant_emails = []
         if use_rag:
-            relevant_emails = db._similarity_search_with_relevance_scores(
+            assert db is not None, "RAG requires a database to be provided."
+            re = db._similarity_search_with_relevance_scores(
                 instruction, k=rag_num_emails
             )
-            relevant_emails = [r[0] for r in relevant_emails if r[1] >= rag_relevance_threshold]
+            relevant_emails = [
+                Email.deserialize(r[0].metadata["serialized_email"])
+                for r in re
+                if r[1] >= rag_relevance_threshold
+            ]
 
         prompt = prompting.create_prompt(
-            instruction, system_preamble, user_preamble, rag_preamble, relevant_emails
+            instruction, system_preamble, user_preamble, rag_preamble, relevant_emails, thread_preamble, thread,
         )
         prompts.append(prompt)
         messages = [{"role": "user", "content": prompt}]

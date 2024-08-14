@@ -12,6 +12,7 @@ from tqdm import tqdm
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from panza.utils import rag
+from panza.utils.documents import Email
 
 sys.path.pop(0)
 
@@ -29,7 +30,7 @@ def retrieve_similar_emails(batch, db, num_emails):
             return relevant_emails
 
         relevant_emails = [
-            {"email": r[0].page_content, "score": r[1]}
+            {"serialized_email": r[0].metadata["serialized_email"], "score": r[1]}
             for r in relevant_emails
             if r[0].page_content not in email["email"]
         ]
