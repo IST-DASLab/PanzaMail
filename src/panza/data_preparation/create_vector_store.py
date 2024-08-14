@@ -1,27 +1,29 @@
 import argparse
 import json
 import time
-from typing import Dict, List
+from typing import List
 
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
 
 from panza.utils import rag
+from panza.utils.documents import Email
 
 
-def load_emails(path: str) -> List[Dict]:
+
+def load_emails(path: str) -> List[Email]:
     with open(path, "r") as f:
         lines = f.readlines()
 
-    emails = [json.loads(line) for line in lines]
+    emails = [Email.deserialize(line) for line in lines]
 
     return emails
 
 
-def process_emails(emails: List[Dict], chunk_size: int, chunk_overlap: int) -> List[Document]:
+def process_emails(emails: List[Email], chunk_size: int, chunk_overlap: int) -> List[Document]:
     # Convert e-mails to langchain documents
     documents = [
-        Document(page_content=email["email"], metadata={"subject": email["subject"]})
+        Document(page_content=email.email, metadata={"serialized_email": email.serialize()})
         for email in emails
     ]
 

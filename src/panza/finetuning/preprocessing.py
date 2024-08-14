@@ -1,10 +1,11 @@
 import os
 import random
-from typing import Dict
+from typing import Dict, List, Tuple
 
 from langchain_core.documents import Document
 
 from panza.utils import prompting, rag
+from panza.utils.documents import Email
 
 SYSTEM_PREAMBLE_PATH = os.environ.get("PANZA_SYSTEM_PREAMBLE_PATH")
 USER_PREAMBLE_PATH = os.environ.get("PANZA_USER_PREAMBLE_PATH")
@@ -31,6 +32,12 @@ if PANZA_FINETUNE_WITH_RAG:
     RAG_RELEVANCE_THRESHOLD = float(os.environ.get("PANZA_FINETUNE_RAG_RELEVANCE_THRESHOLD"))
     PANZA_SEED = int(os.environ.get("PANZA_SEED"))
     random.seed(PANZA_SEED)
+
+PANZA_FINETUNE_WITH_THREAD = int(os.environ.get("PANZA_FINETUNE_WITH_THREAD")) == 1
+if PANZA_FINETUNE_WITH_THREAD:
+    THREAD_PREAMBLE_PATH = os.environ.get("PANZA_THREAD_PREAMBLE_PATH")
+    THREAD_PREAMBLE = prompting.load_preamble(THREAD_PREAMBLE_PATH)
+    THREAD_NUM_EMAILS = int(os.environ.get("PANZA_FINETUNE_THREAD_NUM_EMAILS"))
 
 r"""Example custom preprocessing function.
 
@@ -63,7 +70,7 @@ format. We'll structure prompts and responses like this:
 """
 
 
-def filter_relevant_emails(relevant_emails):
+def filter_relevant_emails(relevant_emails_with_score: List[Tuple[Email, float]]) -> List[Email]:
     # Random chance to not include any relevant emails
     p = random.random()
     if p > RAG_PROB:
@@ -98,10 +105,34 @@ def panza_preprocessing_function_train_with_preamble(inp: Dict) -> Dict:
     try:
         prompt_raw = inp["summary"].split("\n\nInstruction: ")[-1]
         if PANZA_FINETUNE_WITH_RAG:
-            relevant_emails = inp.get("relevant_emails", [])
-            relevant_emails = filter_relevant_emails(relevant_emails)
-            prompt = prompting.create_prompt(prompt_raw, SYSTEM_PREAMBLE, USER_PREAMBLE, RAG_PREAMBLE, relevant_emails)
+            relevant_emails_with_score = inp.get("relevant_emails", [])
+            relevant_emails_with_score = [
+                (Email.deserialize(email), score) for (email, score) in relevant_emails_with_score
+            ]
+            relevant_emails = filter_relevant_emails(relevant_emails_with_score)
+            prompt = prompting.create_prompt(
+                prompt_raw, SYSTEM_PREAMBLE, USER_PREAMBLE, RAG_PREAMBLE, relevant_emails
+            )
             print(prompt)
+        else:
+            prompt = prompting.create_prompt(prompt_raw, SYSTEM_PREAMBLE, USER_PREAMBLE)
+        return {
+            "prompt": PROMPT_START_WRAPPER + prompt + PROMPT_END_WRAPPER,
+            "response": RESPONSE_START_WRAPPER + inp["email"] + RESPONSE_END_WRAPPER,
+        }
+    except Exception as e:
+        raise ValueError(f"Unable to extract prompt/response from {inp}") from e
+
+
+def panza_preprocessing_function_train_with_thread(inp: Dict) -> Dict:
+    try:
+        prompt_raw = inp["summary"].split("\n\nInstruction: ")[-1]
+        if PANZA_FINETUNE_WITH_THREAD:
+            thread = inp.get("thread", [])
+            thread = thread[:THREAD_NUM_EMAILS]
+            prompt = prompting.create_prompt(
+                prompt_raw, SYSTEM_PREAMBLE, USER_PREAMBLE, thread_preamble=THREAD_PREAMBLE, thread_emails=thread
+            )
         else:
             prompt = prompting.create_prompt(prompt_raw, SYSTEM_PREAMBLE, USER_PREAMBLE)
         return {

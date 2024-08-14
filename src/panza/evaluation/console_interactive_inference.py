@@ -27,8 +27,8 @@ def main():
         embeddings_model = rag.get_embeddings_model(args.embedding_model)
         db = rag.load_vector_db_from_disk(args.db_path, args.index_name, embeddings_model)
 
-    system_preamble, user_preamble, rag_preamble = prompting.load_all_preambles(
-        args.system_preamble, args.user_preamble, args.rag_preamble
+    system_preamble, user_preamble, rag_preamble, _ = prompting.load_all_preambles(
+        args.system_preamble, args.user_preamble, args.rag_preamble, args.thread_preamble
     )
 
     while True:
@@ -39,7 +39,7 @@ def main():
             break
 
         prompts, outputs = base_inference.run_inference(
-            instructions=[user_input],
+            instructions=[(user_input, None)],
             model=model,
             tokenizer=tokenizer,
             system_preamble=system_preamble,
@@ -47,6 +47,7 @@ def main():
             rag_preamble=rag_preamble,
             rag_relevance_threshold=args.rag_relevance_threshold,
             rag_num_emails=args.rag_num_emails,
+            thread_preamble=None,
             use_rag=args.use_rag,
             db=db if args.use_rag else None,
             max_new_tokens=args.max_new_tokens,

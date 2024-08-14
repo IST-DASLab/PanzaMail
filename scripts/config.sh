@@ -13,6 +13,7 @@ export PANZA_SYSTEM_PREAMBLE_PATH="$PANZA_PREAMBLES/system_preamble.txt"  # syst
 # IMPORTANT: Please edit the user preamble (at the PANZA_USER_PREAMBLE_PATH) if you plan to use it (recommended).
 export PANZA_USER_PREAMBLE_PATH="$PANZA_PREAMBLES/user_preamble.txt" # a useful preamble to the user instruction, explaining what's going on to the LLM
 export PANZA_RAG_PREAMBLE_PATH="$PANZA_PREAMBLES/rag_preamble.txt"  # a preamble for the RAG component
+export PANZA_THREAD_PREAMBLE_PATH="$PANZA_PREAMBLES/thread_preamble.txt"  # a preamble for the RAG component
 
 export PANZA_SUMMARIZATION_BATCH_SIZE=8  # batch size for summarization.
 export PANZA_EVALUATION_BATCH_SIZE=1  # batch size for evaluation. Can safely be set to higher value (e.g., 8) if the GPU has enough capacity.
@@ -41,10 +42,12 @@ export PANZA_RAG_RELEVANCE_THRESHOLD=0.2 # emails whose relevance is above this 
 export PANZA_SEED=42 # the one true seed
 
 export PANZA_FINETUNE_WITH_PREAMBLE=1  # states whether user and system preambles are used for fine-tuning; on by default
-export PANZA_FINETUNE_WITH_RAG=0  # states whether RAG preambles are used for fine-tuning; on by default
+export PANZA_FINETUNE_WITH_RAG=0  # states whether RAG preambles are used for fine-tuning; off by default
+export PANZA_FINETUNE_WITH_THREAD=0  # states whether the email thread is used for fine-tuning; off by default
 export PANZA_FINETUNE_RAG_NUM_EMAILS=3  # maximum number of emails to use for RAG fine-tuning; 3 by default
 export PANZA_FINETUNE_RAG_PROB=0.55  # probability of using RAG context for fine-tuning; 0.5 by default
 export PANZA_FINETUNE_RAG_RELEVANCE_THRESHOLD=0.2  # emails whose relevance is above this threshold will be presented for RAG during fine-tuning
+export PANZA_FINETUNE_THREAD_NUM_EMAILS=3  # maximum number of emails to use for thread fine-tuning; 3 by default
 export PANZA_DISABLE_RAG_INFERENCE=0  # RAG inference is on by default, since it's usually better
 
 export PANZA_WANDB_DISABLED=True  # disable Weights and Biases logging by default

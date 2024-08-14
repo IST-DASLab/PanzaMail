@@ -48,6 +48,9 @@ export WANDB_PROJECT="panza-${PANZA_USERNAME}"
 if [ "$PANZA_FINETUNE_WITH_PREAMBLE" = 1 ]; then
   PREAMBLE_STR="-PREAMBLE"
   PREPROCESSING_FN=panza.finetuning.preprocessing:panza_preprocessing_function_train_with_preamble
+elif [ "$PANZA_FINETUNE_WITH_THREAD" = 1 ]; then
+  PREAMBLE_STR="-THREAD"
+  PREPROCESSING_FN=panza.finetuning.preprocessing:panza_preprocessing_function_train_with_thread
 else
   PREAMBLE_STR=""
   PREPROCESSING_FN=panza.finetuning.preprocessing:panza_preprocessing_function
@@ -123,9 +126,23 @@ python ${EVAL_SCRIPT} \
   --system-preamble=${PANZA_SYSTEM_PREAMBLE_PATH} \
   --user-preamble=${PANZA_USER_PREAMBLE_PATH} \
   --rag-preamble=${PANZA_RAG_PREAMBLE_PATH} \
+  --thread-preamble=${PANZA_THREAD_PREAMBLE_PATH} \
   --golden=${PANZA_DATA_DIR}/test.jsonl \
   --batch-size=${PANZA_EVALUATION_BATCH_SIZE} \
   --wandb-run-id=${WANDB_RUN_ID}
+
+# Running BLEU evaluation with thread
+EVAL_SCRIPT=${PANZA_WORKSPACE}/src/panza/evaluation/evaluation.py
+python ${EVAL_SCRIPT} \
+  --model=${BASE_SAVE_PATH}/models/${RUN_NAME} \
+  --system-preamble=${PANZA_SYSTEM_PREAMBLE_PATH} \
+  --user-preamble=${PANZA_USER_PREAMBLE_PATH} \
+  --rag-preamble=${PANZA_RAG_PREAMBLE_PATH} \
+  --thread-preamble=${PANZA_THREAD_PREAMBLE_PATH} \
+  --golden=${PANZA_DATA_DIR}/test.jsonl \
+  --batch-size=${PANZA_EVALUATION_BATCH_SIZE} \
+  --wandb-run-id=${WANDB_RUN_ID} \
+  --use-thread
 
 # Running BLEU evaluation with RAG
 python ${EVAL_SCRIPT} \
@@ -133,6 +150,7 @@ python ${EVAL_SCRIPT} \
   --system-preamble=${PANZA_SYSTEM_PREAMBLE_PATH} \
   --user-preamble=${PANZA_USER_PREAMBLE_PATH} \
   --rag-preamble=${PANZA_RAG_PREAMBLE_PATH} \
+  --thread-preamble=${PANZA_THREAD_PREAMBLE_PATH} \
   --golden=${PANZA_DATA_DIR}/test.jsonl \
   --batch-size=${PANZA_EVALUATION_BATCH_SIZE} \
   --wandb-run-id=${WANDB_RUN_ID} \
