@@ -1,0 +1,26 @@
+[project]
+name = "panza_mail"
+version = "2024.08.14"
+description = "A personal email assistant, trained and running on-device."
+
+[build-system]
+requires = ["setuptools >= 61.0.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+# Dependencies
+[project.optional-dependencies]
+dev = [
+    "coverage[toml]>=5.2.1"
+]
+
+# Testing
+[tool.coverage.report]
+fail_under = 80
+
+[tool.coverage.run]
+branch = true
+include = ["mypackage/*"]
+command_line = "-m unittest discover -s tests/"
