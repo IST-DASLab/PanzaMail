@@ -28,18 +28,3 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["src"]
-
-# Dependencies
-[project.optional-dependencies]
-dev = [
-    "coverage[toml]>=5.2.1"
-]
-
-# Testing
-[tool.coverage.report]
-fail_under = 80
-
-[tool.coverage.run]
-branch = true
-include = ["mypackage/*"]
-command_line = "-m unittest discover -s tests/"

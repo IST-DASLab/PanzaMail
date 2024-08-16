@@ -8,7 +8,3 @@ results/
 wandb/
 
 *.log
-
-# Unit testing / coverage reports
-.coverage
-.coverage.*
