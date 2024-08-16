@@ -17,6 +17,7 @@ dependencies = [
     "cmake",
     "packaging",
     "nltk",
+    "ollama",
     "llm-foundry@git+https://github.com/IST-DASLab/llm-foundry",
     "peft@git+https://github.com/IST-DASLab/peft-rosa.git@grad_quant_looser_versioning",
     "spops-sm-80"
