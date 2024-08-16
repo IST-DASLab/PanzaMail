@@ -1,5 +1,7 @@
 import argparse
+import json
 import random
+from datetime import datetime
 from os import makedirs
 from os.path import join
 
@@ -9,6 +11,7 @@ def main():
     parser.add_argument("--data-path", type=str, default=None)
     parser.add_argument("--output-data-dir", type=str, default=None)
     parser.add_argument("--train-ratio", type=float, default=0.8)
+    parser.add_argument("--split-type", type=str, default="random")
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
 
@@ -17,8 +20,13 @@ def main():
     with open(args.data_path, "r") as f:
         data = f.readlines()
 
-    random.seed(args.seed)
-    random.shuffle(data)
+    if args.split_type == "random":
+        random.seed(args.seed)
+        random.shuffle(data)
+    elif args.split_type == "chronological":
+        data = sorted(data, key=lambda x: datetime.fromisoformat(json.loads(x)["date"]))
+    else:
+        raise ValueError("Invalid split type.")
 
     train_size = int(len(data) * args.train_ratio)
 

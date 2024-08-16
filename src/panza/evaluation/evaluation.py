@@ -8,19 +8,18 @@
 #     targets and outputs, and is not computed on a per-example basis. The similarity is computed
 #     in the latent space of an LLM, by default GPT-2.
 
-import torch
 import json
 import os
 import re
 import string
 import sys
 
-from evaluate import load
-from torchmetrics.text.rouge import ROUGEScore
-from torchmetrics.text.bleu import BLEUScore
-
 import numpy as np
+import torch
 import wandb
+from evaluate import load
+from torchmetrics.text.bleu import BLEUScore
+from torchmetrics.text.rouge import ROUGEScore
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
@@ -35,9 +34,10 @@ def main():
     parser.add_argument("--responses-per-prompt", type=int, default=1)
     parser.add_argument("--golden", type=str, default=None)
     parser.add_argument("--batch-size", type=int, default=1)
+    parser.add_argument("--use-thread", action="store_true", default=False)
     parser.add_argument("--wandb-run-id", type=str, default=None)
     args = parser.parse_args()
-    
+
     rouge = ROUGEScore()
     # This library computes the BLEU score components separately. We do not use a length penalty.
     bleu1 = BLEUScore(n_gram=1)
@@ -56,8 +56,8 @@ def main():
         embeddings_model = rag.get_embeddings_model(args.embedding_model)
         db = rag.load_vector_db_from_disk(args.db_path, args.index_name, embeddings_model)
 
-    system_preamble, user_preamble, rag_preamble = prompting.load_all_preambles(
-        args.system_preamble, args.user_preamble, args.rag_preamble
+    system_preamble, user_preamble, rag_preamble, thread_preamble = prompting.load_all_preambles(
+        args.system_preamble, args.user_preamble, args.rag_preamble, args.thread_preamble
     )
 
     with open(args.golden, "r") as f:
@@ -70,6 +70,7 @@ def main():
         else:
             grouped_golden[entry["summary"]] = {}
             grouped_golden[entry["summary"]]["templates"] = [(entry["email"])]
+        grouped_golden[entry["summary"]]["thread"] = entry["thread"]
 
     print("Evaluating with batch size", args.batch_size)
 
@@ -81,12 +82,19 @@ def main():
     for i in range(0, len(grouped_golden), args.batch_size):
         batch = grouped_golden[i:i + args.batch_size]
         prompts = [item[0] for item in batch]
+        if args.use_thread:
+            threads = [item[1]["thread"] for item in batch]
         golden_responses = [item[1]["templates"] for item in batch]
 
         #prompt_scores = [[] for _ in range(len(prompts))]
         for _ in range(args.responses_per_prompt):
+            if args.use_thread:
+                instructions = list(zip(prompts, threads))
+            else:
+                instructions = list(zip(prompts, [None]*len(prompts)))
+
             full_prompts, outputs = base_inference.run_inference(
-                instructions=prompts,
+                instructions=instructions,
                 model=model,
                 tokenizer=tokenizer,
                 system_preamble=system_preamble,
@@ -94,6 +102,7 @@ def main():
                 rag_preamble=rag_preamble,
                 rag_relevance_threshold=args.rag_relevance_threshold,
                 rag_num_emails=args.rag_num_emails,
+                thread_preamble=thread_preamble,
                 use_rag=args.use_rag,
                 db=db if args.use_rag else None,
                 max_new_tokens=args.max_new_tokens,
@@ -114,7 +123,7 @@ def main():
                 punc_table = str.maketrans({key: None for key in string.punctuation})
                 golden = [" ".join(x.translate(punc_table).lower().split()) for x in golden_responses[j]]
                 candidate = " ".join(outputs[j].translate(punc_table).lower().split())
-                
+
                 rouge_score = rouge(outputs[j], golden_responses[j])
                 bleu_score = np.mean([bleu([candidate], [golden]) for bleu in [bleu1, bleu2, bleu3, bleu4]])
                 rouge_score = rouge(candidate, golden)
@@ -153,26 +162,32 @@ def main():
     for prompt_info in prompt_scores.values():
         flattened_golden += ([prompt_info["golden"][0]])*len(prompt_info['output'])
         flattened_outputs += prompt_info['output']
-    mauve_score = mauve.compute(predictions=flattened_outputs, references=flattened_golden) 
+    mauve_score = mauve.compute(predictions=flattened_outputs, references=flattened_golden)
     print("MAUVE score", mauve_score)
     means["MAUVE"] = mauve_score.mauve
     print("Mean scores across all prompts: ", {f"    {k}: {v}" for k, v in means.items()})
 
 
     # Optionally, update wandb run with eval scores
-    rag_str = "RAG-" if args.use_rag else ""
+    if args.use_thread:
+        setting_str = "THREAD-"
+    elif args.use_rag:
+        setting_str = "RAG-"
+    else:
+        setting_str = ""
+
     if args.wandb_run_id:
         with wandb.init(id=args.wandb_run_id, resume=True):
-            wandb.log({f"EVAL/{k}-{rag_str}mean": v for k, v in means.items()})
-            wandb.log({f"EVAL/{k}-{rag_str}min": v for k, v in mins.items()})
+            wandb.log({f"EVAL/{k}-{setting_str}mean": v for k, v in means.items()})
+            wandb.log({f"EVAL/{k}-{setting_str}min": v for k, v in mins.items()})
     else:
-        print({f"EVAL/{k}-{rag_str}mean": v for k, v in means.items()})
-        print({f"EVAL/{k}-{rag_str}min": v for k, v in mins.items()})
+        print({f"EVAL/{k}-{setting_str}mean": v for k, v in means.items()})
+        print({f"EVAL/{k}-{setting_str}min": v for k, v in mins.items()})
 
-    with open(os.path.join(args.model, f"{rag_str}eval_responses.txt"), 'w') as f:
+    with open(os.path.join(args.model, f"{setting_str}eval_responses.txt"), 'w') as f:
         json.dump(prompt_scores, f, ensure_ascii=False, indent=4)
 
-    with open(os.path.join(args.model, f"{rag_str}eval_summary.txt"), 'w') as f:
+    with open(os.path.join(args.model, f"{setting_str}eval_summary.txt"), 'w') as f:
         json.dump({"means": means, "mins": mins}, f, ensure_ascii=False, indent=4)
 
 if __name__ == "__main__":

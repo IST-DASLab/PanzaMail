@@ -2,6 +2,7 @@ import argparse
 import json
 import mailbox
 import re
+from email.utils import parsedate_to_datetime
 from os import makedirs
 from os.path import join
 
@@ -35,16 +36,14 @@ def skip_forwarded_messages(plain_text):
         return plain_text
 
 
-def remove_quoted_content(email_body):
+def remove_date_time(email_body):
     # Regular expression pattern to match lines starting with "On " and ending with "> wrote: "
     # The pattern uses non-greedy matching (.*?) to find the shortest match that satisfies the condition
     pattern = re.compile(r"(^On.*wrote.*)|(^Am.*schrieb.*)", re.MULTILINE | re.DOTALL)
 
-    # Search for the pattern and truncate everything after it
     match = pattern.search(email_body)
     if match:
-        # Truncate the email body up to the start of the matched pattern
-        return email_body[: match.start()].strip()
+        return (email_body[:match.start()] + email_body[match.end():]).strip()
     else:
         return email_body
 
@@ -66,6 +65,28 @@ def count_words(s):
     return len(s.split())
 
 
+def extract_by_quote_level(text):
+    # Split the text into lines
+    lines = text.split('\n')
+
+    # Dictionary to store lines by quote level
+    grouped_lines = {}
+
+    for line in lines:
+        # Count the number of '>' at the start of the line
+        quote_level = len(re.match(r'^>*', line).group())
+
+        # Remove leading '>' and spaces
+        clean_line = re.sub(r'^>*\s*', '', line)
+
+        # Add the clean line to the appropriate group
+        if quote_level not in grouped_lines:
+            grouped_lines[quote_level] = []
+        grouped_lines[quote_level].append(clean_line)
+
+    return grouped_lines
+
+
 def filter_message(msg):
     try:
         plain_text = extract_only_plain_text(msg)
@@ -77,17 +98,24 @@ def filter_message(msg):
         return None
 
     plain_text = skip_forwarded_messages(plain_text)
-    plain_text = remove_quoted_content(plain_text)
-    # sometimes remove_quoted_content misses, so making sure we remove lines with ">" at the start
-    plain_text = remove_lines_starting_with_gt(plain_text)
-    plain_text = truncate_long_emails(plain_text)
+    email_with_thread = extract_by_quote_level(plain_text)
+    email_with_thread = ["\n".join(an_email).strip() for an_email in email_with_thread.values()]
+
+    # remove "On ... wrote:" lines
+    email_with_thread = [remove_date_time(an_email) for an_email in email_with_thread]
+
+    main_email = email_with_thread.pop(0)
+    email_with_thread.reverse() # chronological order
+    
+    # truncate long emails
+    main_email = truncate_long_emails(main_email)
 
     # check length before detecting language
-    if count_words(plain_text) < SHORT_EMAIL_THRESHOLD:
+    if count_words(main_email) < SHORT_EMAIL_THRESHOLD:
         DISCARDED_EMAILS["short"].append(plain_text)
         return None
     try:
-        if langdetect.detect(plain_text) != "en":
+        if langdetect.detect(main_email) != "en":
             DISCARDED_EMAILS["non_english"].append(plain_text)
             return None
     except:
@@ -95,11 +123,11 @@ def filter_message(msg):
         DISCARDED_EMAILS["non_english"].append(plain_text)
         return None
 
-    if plain_text.isspace() or plain_text == "":
+    if main_email.isspace() or main_email == "":
         DISCARDED_EMAILS["empty"].append(plain_text)
         return None
 
-    return plain_text.strip()
+    return (main_email.strip(), [an_email.strip() for an_email in email_with_thread])
 
 
 def main():
@@ -123,17 +151,20 @@ def main():
         print(f"--> processing {i}/{n_emails} <--")
         # Filter messages sent from your email address
         if message["from"] and any(email in message["from"] for email in EMAIL):
+            date = parsedate_to_datetime(message["Date"]).isoformat()
             if message.is_multipart():
                 for part in message.walk():
                     filtered_msg = filter_message(part)
                     if filtered_msg is not None:
                         print(filtered_msg)
-                        CLEAN_EMAILS.append({"email": filtered_msg, "subject": message["Subject"]})
+                        main_email, thread = filtered_msg
+                        CLEAN_EMAILS.append({"email": main_email, "thread": thread, "subject": message["Subject"], "date": date})
             else:
                 filtered_msg = filter_message(message)
                 if filtered_msg is not None:
                     print(filtered_msg)
-                    CLEAN_EMAILS.append({"email": filtered_msg, "subject": message["Subject"]})
+                    main_email, thread = filtered_msg
+                    CLEAN_EMAILS.append({"email": main_email, "thread": thread, "subject": message["Subject"], "date": date})
 
     print(f"\n---> [Cleaning stats] <---")
     print(f"# clean emails = {len(CLEAN_EMAILS)}")
