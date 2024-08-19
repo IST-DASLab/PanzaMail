@@ -3,7 +3,7 @@ import os
 import sys
 
 import torch
-from peft import AutoPeftModelForCausalLM
+# from peft import AutoPeftModelForCausalLM
 from transformers import (AutoModelForCausalLM, AutoTokenizer,
                           BitsAndBytesConfig)
 
@@ -36,8 +36,8 @@ def get_base_inference_args_parser():
     parser.add_argument("--db-path", type=str, default=None)
     parser.add_argument("--index-name", type=str, default=None)
     parser.add_argument("--rag-num-emails", type=int, default=7)
-    parser.add_argument("--device", type=str, default="cuda:0")
-    parser.add_argument("--dtype", type=str, default="bf16")
+    parser.add_argument("--device", type=str, default="mps")
+    parser.add_argument("--dtype", type=str, default="fp32")
     parser.add_argument("--nthreads", type=int, default=None)
     parser.add_argument("--load-in-4bit", default=False, action="store_true")
 
@@ -61,26 +61,26 @@ def load_model_and_tokenizer(model_path, device, dtype, load_in_4bit):
         else None
     )
 
-    if os.path.exists(os.path.join(model_path, "adapter_config.json")):
-        print("found an adapter.")
-        if load_in_4bit:
-            model = AutoPeftModelForCausalLM.from_pretrained(
-                model_path, device_map=device, quantization_config=quant_config, trust_remote_code=True
-            )
-        else:
-            model = AutoPeftModelForCausalLM.from_pretrained(
-                model_path, torch_dtype=dtype, device_map=device, trust_remote_code=True
-            )
-        model = model.merge_and_unload()
+    # if os.path.exists(os.path.join(model_path, "adapter_config.json")):
+    #     print("found an adapter.")
+    #     if load_in_4bit:
+    #         model = AutoPeftModelForCausalLM.from_pretrained(
+    #             model_path, device_map=device, quantization_config=quant_config, trust_remote_code=True
+    #         )
+    #     else:
+    #         model = AutoPeftModelForCausalLM.from_pretrained(
+    #             model_path, torch_dtype=dtype, device_map=device, trust_remote_code=True
+    #         )
+    #     model = model.merge_and_unload()
+    # else:
+    if load_in_4bit:
+        model = AutoModelForCausalLM.from_pretrained(
+            model_path, device_map=device, quantization_config=quant_config, trust_remote_code=True
+        )
     else:
-        if load_in_4bit:
-            model = AutoModelForCausalLM.from_pretrained(
-                model_path, device_map=device, quantization_config=quant_config, trust_remote_code=True
-            )
-        else:
-            model = AutoModelForCausalLM.from_pretrained(
-                model_path, torch_dtype=dtype, device_map=device, trust_remote_code=True
-            )
+        model = AutoModelForCausalLM.from_pretrained(
+            model_path, torch_dtype=dtype, device_map=device, trust_remote_code=True
+        )
 
     tokenizer = AutoTokenizer.from_pretrained(
         model_path, model_max_length=model.config.max_position_embeddings
