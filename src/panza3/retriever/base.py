@@ -18,3 +18,7 @@ class DocumentRetriever(ABC):
     @abstractmethod
     def store(self, documents: List[Document]):
         pass
+
+    @abstractmethod
+    def save_db_to_disk(self):
+        pass
