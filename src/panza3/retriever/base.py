@@ -14,3 +14,7 @@ class DocumentRetriever(ABC):
         self, query: str, k: int, score: Optional[float] = None
     ) -> List[Tuple[Document, float]]:
         pass
+
+    @abstractmethod
+    def store(self, documents: List[Document]):
+        pass

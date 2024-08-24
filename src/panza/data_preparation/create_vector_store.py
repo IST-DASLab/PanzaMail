@@ -3,8 +3,7 @@ import json
 import time
 from typing import List
 
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_core.documents import Document
+
 
 from panza.utils import rag
 from panza.utils.documents import Email
@@ -19,21 +18,6 @@ def load_emails(path: str) -> List[Email]:
 
     return emails
 
-
-def process_emails(emails: List[Email], chunk_size: int, chunk_overlap: int) -> List[Document]:
-    # Convert e-mails to langchain documents
-    documents = [
-        Document(page_content=email.email, metadata={"serialized_email": email.serialize()})
-        for email in emails
-    ]
-
-    # Split long e-mails into text chuncks
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=chunk_size, chunk_overlap=chunk_overlap
-    )
-    documents = text_splitter.split_documents(documents)
-
-    return documents
 
 
 def main():
