@@ -3,7 +3,7 @@ from datetime import datetime
 
 import pytest
 
-from panza3.entities import Email
+from panza3.entities import Email, EmailInstruction
 
 
 def test_email_serialization_deserialization():
@@ -20,3 +20,23 @@ def test_email_processing():
 
     deserialized = Email.deserialize(processed[0].metadata["serialized_document"])
     assert email == deserialized
+
+
+def test_email_instruction_init():
+    instruction = EmailInstruction(instruction="Write an email.")
+    assert instruction.instruction == "Write an email."
+    assert instruction.thread == []
+    assert instruction.past_messages == []
+
+    instruction = EmailInstruction(
+        instruction="Write an email.",
+        thread=["thread"],
+        past_messages=[{"role": "user", "content": "Hi!"}, {"role": "assistant", "content": "Hi!"}],
+    )
+
+    assert instruction.instruction == "Write an email."
+    assert instruction.thread == ["thread"]
+    assert instruction.past_messages == [
+        {"role": "user", "content": "Hi!"},
+        {"role": "assistant", "content": "Hi!"},
+    ]
