@@ -44,3 +44,38 @@ def faiss_db_path(tmp_path: Path, index_name: str, embedding_model: str) -> Path
 
     # Return the path to the directory containing all mock data
     return base_temp_dir
+
+
+@pytest.fixture
+def preambles_path(tmp_path: Path) -> Path:
+    preambles_path = tmp_path / "prompt_preambles"
+    preambles_path.mkdir(parents=True)
+    return preambles_path
+
+
+@pytest.fixture
+def system_preamble_path(preambles_path) -> Path:
+    system_preamble_path = preambles_path / "system_preamble.txt"
+    system_preamble_path.write_text("<SYSTEM PREAMBLE>")
+    return system_preamble_path
+
+
+@pytest.fixture
+def user_preamble_path(preambles_path) -> Path:
+    user_preamble_path = preambles_path / "user_preamble.txt"
+    user_preamble_path.write_text("<USER PREAMBLE>")
+    return user_preamble_path
+
+
+@pytest.fixture
+def rag_preamble_path(preambles_path) -> Path:
+    rag_preamble_path = preambles_path / "rag_preamble.txt"
+    rag_preamble_path.write_text("RAG PREAMBLE:\n\n{rag_context}")
+    return rag_preamble_path
+
+
+@pytest.fixture
+def thread_preamble_path(preambles_path) -> Path:
+    thread_preamble_path = preambles_path / "thread_preamble.txt"
+    thread_preamble_path.write_text("THREAD PREAMBLE:\n\n{threading_context}")
+    return thread_preamble_path

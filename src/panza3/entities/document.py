@@ -1,7 +1,7 @@
 import copy
 import json
 from abc import ABC, abstractmethod
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from typing import Dict, List, Optional, Union
 
@@ -37,7 +37,7 @@ class Document(ABC):
 class Email(Document):
     email: str
     subject: str
-    thread: List[str]
+    thread: List[str] = field(default_factory=list)
     date: datetime
 
     def serialize(self) -> dict:
