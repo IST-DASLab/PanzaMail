@@ -11,6 +11,9 @@ from panza3.retriever import FaissRetriever
 def embedding_model() -> str:
     return "sentence-transformers/all-mpnet-base-v2"
 
+@pytest.fixture
+def generative_model() -> str:
+    return "microsoft/Phi-3-mini-4k-instruct"
 
 @pytest.fixture
 def index_name() -> str:

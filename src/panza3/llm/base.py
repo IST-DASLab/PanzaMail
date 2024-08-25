@@ -6,11 +6,12 @@ ChatHistoryType = List[MessageType]
 
 
 class LLM(ABC):
-    def __init__(self, name: str):
+    def __init__(self, name: str, sampling_parameters: Dict):
         self.name = name
+        self.sampling_parameters = sampling_parameters
 
     @abstractmethod
-    def chat(self, messages: ChatHistoryType) -> str:
+    def chat(self, messages: ChatHistoryType | List[ChatHistoryType]) -> List[str]:
         pass
 
     @abstractmethod

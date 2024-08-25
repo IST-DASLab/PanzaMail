@@ -3,9 +3,6 @@ import os
 import sys
 
 import torch
-from peft import AutoPeftModelForCausalLM
-from transformers import (AutoModelForCausalLM, AutoTokenizer,
-                          BitsAndBytesConfig)
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
@@ -45,21 +42,6 @@ def get_base_inference_args_parser():
 
 
 def load_model_and_tokenizer(model_path, device, dtype, load_in_4bit):
-    assert dtype in [None, "fp32", "bf16"]
-    if device == "cpu":
-        assert dtype == "fp32", "CPU only supports fp32, please specify --dtype fp32"
-    dtype = None if dtype is None else (torch.float32 if dtype == "fp32" else torch.bfloat16)
-
-    quant_config = (
-        BitsAndBytesConfig(
-            load_in_4bit=True,
-            bnb_4bit_compute_dtype=dtype,
-            bnb_4bit_use_double_quant=True,
-            bnb_4bit_quant_type="nf4",
-        )
-        if load_in_4bit
-        else None
-    )
 
     if os.path.exists(os.path.join(model_path, "adapter_config.json")):
         print("found an adapter.")
@@ -131,44 +113,3 @@ def run_inference(
         prompts.append(prompt)
         messages = [{"role": "user", "content": prompt}]
         batch.append(messages)
-
-    encodeds = tokenizer.apply_chat_template(
-        batch,
-        return_tensors="pt",
-        add_generation_prompt=True,
-        padding=True,
-        truncation=True,
-        return_dict=True,
-    )
-    model_inputs = encodeds.to(device)
-
-    if best:
-        generated_ids = model.generate(
-            **model_inputs,
-            max_new_tokens=max_new_tokens,
-            do_sample=False,
-            num_beams=1,
-            pad_token_id=tokenizer.pad_token_id,
-        )
-    else:
-        generated_ids = model.generate(
-            **model_inputs,
-            max_new_tokens=max_new_tokens,
-            do_sample=True,
-            temperature=temperature,
-            top_k=top_k,
-            top_p=top_p,
-            pad_token_id=tokenizer.pad_token_id,
-        )
-
-    outputs = tokenizer.batch_decode(generated_ids)
-
-    # Clean outputs
-    _, prompt_end_wrapper, _, response_end_wrapper = prompting.get_model_special_tokens(
-        model.name_or_path
-    )
-    outputs = [
-        output.split(prompt_end_wrapper)[-1].split(response_end_wrapper)[0] for output in outputs
-    ]
-
-    return prompts, outputs
