@@ -1,28 +1,71 @@
+from typing import Type
+
 import pytest
+from torch import float32 as torch_float32
 
-from panza3.llm import TransformersLLM
+from panza3.llm import PeftLLM, TransformersLLM
+from panza3.llm.local import _MISSING_LIBRARIES, LocalLLM
+
+skip_if_no_transformers = pytest.mark.skipif(
+    "transformers" in _MISSING_LIBRARIES, reason="transformers is not installed"
+)
+skip_if_no_peft = pytest.mark.skipif("peft" in _MISSING_LIBRARIES, reason="peft is not installed")
+skip_if_no_bitsandbytes = pytest.mark.skipif(
+    "bitsandbytes" in _MISSING_LIBRARIES, reason="bitsandbytes is not installed"
+)
 
 
-def test_transformers_llm_init(generative_model: str):
-    model = TransformersLLM(
-        name="huggingface_model",
-        checkpoint=generative_model,
+@pytest.mark.parametrize(
+    "local_llm_class, checkpoint",
+    [
+        pytest.param(
+            TransformersLLM, "microsoft/Phi-3-mini-4k-instruct", marks=skip_if_no_transformers
+        ),
+        # TODO: Replace local Peft checkpoint with fixture
+        pytest.param(
+            PeftLLM,
+            "/nfs/scistore19/alistgrp/Checkpoints/Panza/shared/armand/models/test_rosa_checkpoint",
+            marks=[skip_if_no_transformers, skip_if_no_peft],
+        ),
+    ],
+)
+def test_local_llm_init(local_llm_class: Type[LocalLLM], checkpoint: str):
+    model = local_llm_class(
+        name="local_llm",
+        checkpoint=checkpoint,
         device="cpu",
         sampling_parameters={"do_sample": False, "max_new_tokens": 50},
         dtype="fp32",
         load_in_4bit=False,
     )
     assert model is not None
-    assert model.name == "huggingface_model"
-    assert model.checkpoint == generative_model
+    assert model.name == "local_llm"
+    assert model.checkpoint == checkpoint
     assert model.model is not None
     assert model.tokenizer is not None
+    assert model.model.device.type == "cpu"
+    assert model.dtype == torch_float32
+    assert model.model.dtype == model.dtype
 
 
-def test_transformers_llm_generate(generative_model: str):
-    model = TransformersLLM(
-        name="huggingface_model",
-        checkpoint=generative_model,
+@pytest.mark.parametrize(
+    "local_llm_class, checkpoint",
+    [
+        pytest.param(
+            TransformersLLM, "microsoft/Phi-3-mini-4k-instruct", marks=skip_if_no_transformers
+        ),
+        # TODO: Replace local Peft checkpoint with fixture
+        pytest.param(
+            PeftLLM,
+            "/nfs/scistore19/alistgrp/Checkpoints/Panza/shared/armand/models/test_rosa_checkpoint",
+            marks=[skip_if_no_transformers, skip_if_no_peft],
+        ),
+    ],
+)
+def test_local_llm_generate(local_llm_class: Type[LocalLLM], checkpoint: str):
+    model = local_llm_class(
+        name="local_llm",
+        checkpoint=checkpoint,
         device="cpu",
         sampling_parameters={"do_sample": False, "max_new_tokens": 50},
         dtype="fp32",
@@ -37,10 +80,24 @@ def test_transformers_llm_generate(generative_model: str):
     assert len(outputs) == 1
 
 
-def test_transformers_llm_generate_batch(generative_model: str):
-    model = TransformersLLM(
-        name="huggingface_model",
-        checkpoint=generative_model,
+@pytest.mark.parametrize(
+    "local_llm_class, checkpoint",
+    [
+        pytest.param(
+            TransformersLLM, "microsoft/Phi-3-mini-4k-instruct", marks=skip_if_no_transformers
+        ),
+        # TODO: Replace local Peft checkpoint with fixture
+        pytest.param(
+            PeftLLM,
+            "/nfs/scistore19/alistgrp/Checkpoints/Panza/shared/armand/models/test_rosa_checkpoint",
+            marks=[skip_if_no_transformers, skip_if_no_peft],
+        ),
+    ],
+)
+def test_local_llm_generate_batch(local_llm_class: Type[LocalLLM], checkpoint: str):
+    model = local_llm_class(
+        name="local_llm",
+        checkpoint=checkpoint,
         device="cpu",
         sampling_parameters={"do_sample": False, "max_new_tokens": 50},
         dtype="fp32",

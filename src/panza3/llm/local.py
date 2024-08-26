@@ -1,7 +1,29 @@
-from typing import Dict, Iterator, List
+from abc import abstractmethod
+from typing import Any, Dict, Iterator, List, Type
 
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+
+_MISSING_LIBRARIES = []
+
+try:
+    from peft import AutoPeftModelForCausalLM
+except ImportError:
+    AutoPeftModelForCausalLM = None
+    _MISSING_LIBRARIES.append("peft")
+
+try:
+    from transformers import AutoModelForCausalLM, AutoTokenizer
+except ImportError:
+    AutoModelForCausalLM = None
+    AutoTokenizer = None
+    _MISSING_LIBRARIES.append("transformers")
+
+try:
+    from transformers import BitsAndBytesConfig
+except ImportError:
+    BitsAndBytesConfig = None
+    _MISSING_LIBRARIES.append("bitsandbytes")
+
 
 from .base import LLM, ChatHistoryType
 
@@ -16,6 +38,8 @@ class LocalLLM(LLM):
         dtype: str,
         load_in_4bit: bool,
     ):
+        self._check_installation()
+
         super().__init__(name, sampling_parameters)
         self.checkpoint = checkpoint
         self.device = device
@@ -40,34 +64,6 @@ class LocalLLM(LLM):
         )
 
         self._load_model_and_tokenizer()
-
-    def _load_model_and_tokenizer(self) -> None:
-        pass
-
-
-class TransformersLLM(LocalLLM):
-
-    def _load_model_and_tokenizer(self):
-        if self.load_in_4bit:
-            self.model = AutoModelForCausalLM.from_pretrained(
-                self.checkpoint,
-                device_map=self.device,
-                quantization_config=self.quantization_config,
-                trust_remote_code=True,
-            )
-        else:
-            self.model = AutoModelForCausalLM.from_pretrained(
-                self.checkpoint,
-                torch_dtype=self.dtype,
-                device_map=self.device,
-                trust_remote_code=True,
-            )
-
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            self.checkpoint, model_max_length=self.model.config.max_position_embeddings
-        )
-        self.tokenizer.padding_side = "left"
-        self.tokenizer.pad_token = self.tokenizer.eos_token
 
     def chat(self, messages: ChatHistoryType | List[ChatHistoryType]) -> List[str]:
         encodeds = self.tokenizer.apply_chat_template(
@@ -98,4 +94,59 @@ class TransformersLLM(LocalLLM):
             raise TypeError("chat_stream does not support batched messages.")
 
         # TODO: Implement chat_stream.
-        raise NotImplementedError("chat_stream is not implemented for TransformersLLM.")
+        raise NotImplementedError("chat_stream is not implemented for LocalLLM.")
+
+    def _check_installation(self) -> None:
+        if AutoModelForCausalLM is None or AutoTokenizer is None:
+            raise ImportError(
+                "transformers is not installed. Please install it with `pip install transformers`."
+            )
+
+        if BitsAndBytesConfig is None:
+            from transformers import __version__ as version
+
+            raise ImportError(
+                f"transformers {version} does not support 4-bit quantization. Please upgrade to a newer version."
+            )
+
+    def _load_model_and_tokenizer_with_constructor(self, model_class: Type[Any]) -> None:
+        if self.load_in_4bit:
+            self.model = model_class.from_pretrained(
+                self.checkpoint,
+                device_map=self.device,
+                quantization_config=self.quantization_config,
+                trust_remote_code=True,
+            )
+        else:
+            self.model = model_class.from_pretrained(
+                self.checkpoint,
+                torch_dtype=self.dtype,
+                device_map=self.device,
+                trust_remote_code=True,
+            )
+
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            self.checkpoint, model_max_length=self.model.config.max_position_embeddings
+        )
+        self.tokenizer.padding_side = "left"
+        self.tokenizer.pad_token = self.tokenizer.eos_token
+
+    @abstractmethod
+    def _load_model_and_tokenizer(self) -> None:
+        pass
+
+
+class TransformersLLM(LocalLLM):
+    def _load_model_and_tokenizer(self):
+        self._load_model_and_tokenizer_with_constructor(AutoModelForCausalLM)
+
+
+class PeftLLM(LocalLLM):
+    def _check_installation(self) -> None:
+        super()._check_installation()
+        if AutoPeftModelForCausalLM is None:
+            raise ImportError("peft is not installed.")
+
+    def _load_model_and_tokenizer(self) -> None:
+        self._load_model_and_tokenizer_with_constructor(AutoPeftModelForCausalLM)
+        self.model = self.model.merge_and_unload()

@@ -16,6 +16,10 @@ def generative_model() -> str:
     return "microsoft/Phi-3-mini-4k-instruct"
 
 @pytest.fixture
+def peft_model() -> str:
+    return "microsoft/Phi-3-mini-4k-instruct"
+
+@pytest.fixture
 def index_name() -> str:
     return "test-index"
 
