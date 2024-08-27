@@ -1,0 +1,7 @@
+defaults:
+  - base
+  - writer: email
+  - user: default
+
+embedding_model: "sentence-transformers/all-mpnet-base-v2"
+checkpoint: "microsoft/Phi-3-mini-4k-instruct"

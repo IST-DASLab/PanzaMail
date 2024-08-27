@@ -1,0 +1,2 @@
+panza_workspace: ${hydra:runtime.cwd}/../
+seed: 42

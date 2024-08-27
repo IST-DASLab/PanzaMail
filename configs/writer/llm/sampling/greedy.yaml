@@ -1,0 +1,2 @@
+do_sample: false
+max_new_tokens: 1024
