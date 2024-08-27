@@ -9,7 +9,6 @@ def load_user_preamble(path: str) -> str:
     # We issue a warning to the user.
     with open(path, "r") as file:
         lines = [l for l in file.readlines() if not l.strip().startswith("#")]
-        print(lines)
         preamble = "".join(lines)
         if "CHANGE ME" in preamble:
             print(
