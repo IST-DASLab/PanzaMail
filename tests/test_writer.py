@@ -8,7 +8,7 @@ from panza3.prompting import EmailPromptBuilder
 from panza3.writer import PanzaWriter
 
 
-def test_email_writer_init():
+def test_email_writer():
     # Create mock prompt builder
     mock_builder = MagicMock(spec=EmailPromptBuilder)
     mock_builder.build_prompt.side_effect = (
@@ -25,3 +25,7 @@ def test_email_writer_init():
 
     output = panza_writer.run(instruction)
     assert output == "Received: Instruction: Write an email."
+
+    output, prompt = panza_writer.run(instruction, return_prompt=True)
+    assert output == "Received: Instruction: Write an email."
+    assert prompt == "Instruction: Write an email."
