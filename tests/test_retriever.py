@@ -10,13 +10,14 @@ from panza3.retriever import FaissRetriever
 def get_faiss_retriever(
     db_path: Path, index_name: str, embedding_model: str, device: str
 ) -> FaissRetriever:
-    return FaissRetriever(
+    retriever = FaissRetriever(
         db_path=db_path,
         index_name=index_name,
         embedding_model=embedding_model,
         device=device,
-        document_class=Email,
     )
+    retriever.set_document_class(Email)
+    return retriever
 
 
 def test_faiss_retriever_init_empty(tmp_path: Path, index_name: str, embedding_model: str):

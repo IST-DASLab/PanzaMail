@@ -22,3 +22,6 @@ class DocumentRetriever(ABC):
     @abstractmethod
     def save_db_to_disk(self):
         pass
+
+    def set_document_class(self, document_class: type[Document]):
+        self.document_class = document_class

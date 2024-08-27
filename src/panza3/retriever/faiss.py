@@ -19,7 +19,7 @@ class FaissRetriever(DocumentRetriever):
         index_name: str,
         embedding_model: str,
         device: str,
-        document_class: type[Document],
+        document_class: Optional[type[Document]] = None,
     ) -> None:
 
         self.db_path = db_path

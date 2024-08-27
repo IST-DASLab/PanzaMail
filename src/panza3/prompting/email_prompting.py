@@ -27,6 +27,8 @@ class EmailPromptBuilder(PromptBuilder):
         self.rag_relevance_threshold = rag_relevance_threshold
         self.number_thread_emails = number_thread_emails
 
+        self.retriever.set_document_class(Email)
+
     def _create_rag_preamble_from_emails(self, emails: List[Email]) -> str:
         rag_context = self._create_rag_context_from_emails(emails)
         return self.rag_preamble.format(rag_context=rag_context)
