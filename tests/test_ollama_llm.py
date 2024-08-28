@@ -1,14 +1,15 @@
-from typing import Type
+from typing import Dict, Type
 from unittest.mock import patch, MagicMock
 
 from panza3.llm.ollama import OllamaLLM
+from panza3.llm import MessageType
 import pytest
 
-MODEL = "test_model"
-GGUF_FILE = "test.gguf"
-SAMPLING_PARAMS = {"param1": "val1"}
-REQUEST = "write an email"
-RESPONSE = "here is an email"
+MODEL: str = "test_model"
+GGUF_FILE: str = "test.gguf"
+SAMPLING_PARAMS: Dict = {"param1": "val1"}
+REQUEST: MessageType = {"content": "write an email"}
+RESPONSE: str = "here is an email"
 RESPONSE_OBJ = {"message": {"content": RESPONSE}}
 
 
