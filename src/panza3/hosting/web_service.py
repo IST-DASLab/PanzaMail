@@ -9,8 +9,10 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 import threading
 
+
 class Request(BaseModel):
     text: str
+
 
 class PanzaWebService:
     DEFAULT_PORT = 5001
@@ -35,11 +37,11 @@ class PanzaWebService:
 
     def _get_valid_api_keys(self) -> List[str]:
         return os.getenv("API_KEYS").split(",")
-    
+
     def _streamer(self, stream):
-      for chunk in stream:
-          yield chunk["message"]["content"]
-    
+        for chunk in stream:
+            yield chunk["message"]["content"]
+
     def _predict(self, input: str) -> Generator:
         # TODO: Call PanzaWriter here
         # Dummy generator
@@ -47,16 +49,16 @@ class PanzaWebService:
             yield {"message": {"content": f"Generated text {i}"}}
 
     def _setup_routes(self):
-        @self.app.options('/generate')
+        @self.app.options("/generate")
         def options():
             return {"methods": ["POST"]}
-        
-        @self.app.post('/generate')
+
+        @self.app.post("/generate")
         def generate_text(request: Request, x_api_key: Annotated[str | None, Header()]):
             if x_api_key not in self.api_keys:
                 raise HTTPException(status_code=401, detail="Invalid API key.")
             stream = self._predict(request.text)
-            return StreamingResponse(self._streamer(stream), media_type='text/event-stream')
+            return StreamingResponse(self._streamer(stream), media_type="text/event-stream")
 
     def _start_server(self):
         uvicorn.run(self.app, port=self.port)
