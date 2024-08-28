@@ -35,3 +35,6 @@ line-length = 100
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
+
+[dev-dependencies]
+pytest = "*"
