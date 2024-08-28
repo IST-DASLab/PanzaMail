@@ -19,21 +19,21 @@ class OllamaLLM(LLM):
         if not self._is_model_loaded():
             self._load_model()
 
-    def _is_ollama_running(self):
+    def _is_ollama_running(self) -> bool:
         try:
             ollama.list()
             return True
         except:
             return False
     
-    def _start_ollama(self):
+    def _start_ollama(self) -> None:
         # run the bash command "ollama list" which causes Ollama to start if it is not already running
         try:
             os.system("/bin/bash -c 'ollama list'")
         except:
             raise Exception("Ollama failed to start.")
 
-    def _is_model_loaded(self):
+    def _is_model_loaded(self) -> bool:
         for model in ollama.list()['models']:
             # model name is everything before the colon
             name = model['name'].split(":")[0]
@@ -41,7 +41,7 @@ class OllamaLLM(LLM):
                 return True
         return False
     
-    def _load_model(self):
+    def _load_model(self) -> None:
         # TODO: Add sampling parameters to the model file
         modelfile = f"""
         FROM {self.gguf_file}
