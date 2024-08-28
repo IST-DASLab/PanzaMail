@@ -20,7 +20,8 @@ dependencies = [
     "ollama",
     "llm-foundry@git+https://github.com/IST-DASLab/llm-foundry",
     "peft@git+https://github.com/IST-DASLab/peft-rosa.git@grad_quant_looser_versioning",
-    "spops-sm-80"
+    "spops-sm-80",
+    "omegaconf",
 ]
 
 [build-system]
