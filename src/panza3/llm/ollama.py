@@ -1,8 +1,14 @@
 import os
 from typing import Dict, Iterator, List
-import ollama
-
 from .base import LLM, ChatHistoryType
+
+_MISSING_LIBRARIES = []
+
+try:
+    import ollama
+except ImportError:
+    ollama = None
+    _MISSING_LIBRARIES.append("ollama")
 
 class OllamaLLM(LLM):
     def __init__(self, name: str, gguf_file: str, sampling_params: Dict):
@@ -53,6 +59,10 @@ class OllamaLLM(LLM):
         
     def _get_message(self, response) -> str:
         return response['message']['content']
+    
+    def _check_installation(self) -> None:
+        if ollama is None:
+            raise ImportError("The 'ollama' library is not installed. Please install it with 'pip install ollama'.")
 
     def chat(self, messages: ChatHistoryType | List[ChatHistoryType]) -> List[str]:
         response = ollama.chat(model=self.name, messages=messages, stream=False)
