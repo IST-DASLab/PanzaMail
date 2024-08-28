@@ -1,10 +1,11 @@
 import os
+from typing import Dict, Iterator, List
 import ollama
 
-from .base import LLM
+from .base import LLM, ChatHistoryType
 
 class OllamaLLM(LLM):
-    def __init__(self, name: str, gguf_file: str, sampling_params: dict):
+    def __init__(self, name: str, gguf_file: str, sampling_params: Dict):
         """
         Loads and serves the model from the GGUF file into Ollama with the given name and sampling parameters.
         """
@@ -50,14 +51,14 @@ class OllamaLLM(LLM):
         except:
             raise Exception(f"Failed to load model {self.name} with GGUF file {self.gguf_file}.")
         
-    def _get_message(self, response):
+    def _get_message(self, response) -> str:
         return response['message']['content']
 
-    def chat(self, messages):
+    def chat(self, messages: ChatHistoryType | List[ChatHistoryType]) -> List[str]:
         response = ollama.chat(model=self.name, messages=messages, stream=False)
-        return self._get_message(response)
+        return [self._get_message(response)]
 
-    def chat_stream(self, messages):
+    def chat_stream(self, messages: ChatHistoryType) -> Iterator[str]:
         stream = ollama.chat(
             model=self.name,
             messages=messages,
