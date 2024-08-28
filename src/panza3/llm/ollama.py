@@ -15,7 +15,7 @@ class OllamaLLM(LLM):
         """
         Loads and serves the model from the GGUF file into Ollama with the given name and sampling parameters.
         """
-        super().__init__(name)
+        super().__init__(name, sampling_params)
         self.gguf_file = gguf_file
         self.sampling_params = sampling_params
 
