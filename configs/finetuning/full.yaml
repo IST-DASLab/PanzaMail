@@ -1,0 +1,21 @@
+defaults:
+  - base
+
+fsdp_config:
+  sharding_strategy: FULL_SHARD
+  mixed_precision: FULL
+  activation_checkpointing: true
+  activation_checkpointing_reentrant: false
+  activation_cpu_offload: false
+  limit_all_gathers: true
+  verbose: false
+
+callbacks:
+  hf_checkpointer:
+      overwrite: true
+      precision: # TODO
+      save_folder: ${finetuning.hf_save_path}/${finetuning.run_name}
+      save_interval: 1dur
+
+scheduler:
+  t_warmup: 20ba

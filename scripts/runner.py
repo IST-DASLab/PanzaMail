@@ -25,7 +25,6 @@ def rename_config_keys(cfg: DictConfig) -> None:
 
 @hydra.main(version_base="1.1", config_path="../configs", config_name="panza_writer")
 def main(cfg: DictConfig) -> None:
-    # print(OmegaConf.to_yaml(cfg, resolve=True))
     LOGGER.info("Starting Panza Writer")
     LOGGER.info("Configuration: \n%s", OmegaConf.to_yaml(cfg, resolve=True))
 

@@ -1,0 +1,20 @@
+rosa:
+  lora_lr: ${lr}
+  lora_r: 8
+  spa_d: #TODO
+  lora_alpha: 16
+  target_modules: 'all-linear'
+  lora_dropout: 0.05
+  impl: auto
+  spa_store_transpose: true
+  rosa_dtype: bf16
+  spa_num_grads: 1
+  grad_acc_mode: mean_squared
+  mask_load_path: #TODO
+  mask_save_path: #TODO
+  terminate_after_mask_generation: #TODO
+  schedule: #TODO
+  mask_gen_model_precision: #TODO
+
+scheduler:
+  t_warmup: 8ba
