@@ -9,7 +9,8 @@ dependencies = [
     "fastapi",
     "uvicorn",
     "pydantic",
-    "python-dotenv"
+    "python-dotenv",
+    "hydra-core"
 ]
 
 [project.optional-dependencies]
