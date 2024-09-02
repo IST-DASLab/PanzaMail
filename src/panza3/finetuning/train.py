@@ -10,54 +10,40 @@ import warnings
 from typing import Any, Dict, List, Optional, Union
 
 import torch
-from torch.distributed.fsdp import FullyShardedDataParallel as FSDP, StateDictType, FullStateDictConfig
-
-from composer.optim import DecoupledAdamW
-
-from composer.metrics.nlp import (InContextLearningCodeEvalAccuracy,
-                                  InContextLearningLMAccuracy,
+from composer import Trainer
+from composer.core.callback import Callback
+from composer.metrics.nlp import (InContextLearningCodeEvalAccuracy, InContextLearningLMAccuracy,
                                   InContextLearningLMExpectedCalibrationError,
                                   InContextLearningMCExpectedCalibrationError,
                                   InContextLearningMultipleChoiceAccuracy,
-                                  InContextLearningQAAccuracy,
-                                  LanguageCrossEntropy, LanguagePerplexity)
-
-from llmfoundry.models.utils import init_empty_weights
-
-from transformers import PreTrainedTokenizerBase, AutoModelForCausalLM, BitsAndBytesConfig
-
-from llmfoundry.models.hf.model_wrapper import HuggingFaceModelWithFSDP
-
-from llmfoundry import ComposerHFCausalLM
-
-import os, sys
-from peft.tuners.rosa import RosaModel, RosaScheduler, RosaConfig
-from peft import get_peft_model
-
-from composer import Trainer
-from composer.core.callback import Callback
-from composer.profiler import (JSONTraceHandler, Profiler, TraceHandler,
-                               cyclic_schedule)
+                                  InContextLearningQAAccuracy, LanguageCrossEntropy,
+                                  LanguagePerplexity)
+from composer.optim import DecoupledAdamW
+from composer.profiler import JSONTraceHandler, Profiler, TraceHandler, cyclic_schedule
 from composer.utils import dist, get_device, reproducibility
+from llmfoundry import ComposerHFCausalLM
+from llmfoundry.eval.metrics.nlp import InContextLearningMetric
+from llmfoundry.models.hf.model_wrapper import HuggingFaceModelWithFSDP
+from llmfoundry.models.utils import init_empty_weights
+from llmfoundry.utils import find_mosaicml_logger, log_train_analytics, maybe_create_mosaicml_logger
 from omegaconf import DictConfig, ListConfig
 from omegaconf import OmegaConf as om
+from peft import get_peft_model
+from peft.tuners.rosa import RosaConfig, RosaModel, RosaScheduler
 from rich.traceback import install
-
-from llmfoundry.eval.metrics.nlp import InContextLearningMetric
-from llmfoundry.utils import (find_mosaicml_logger, log_train_analytics,
-                              maybe_create_mosaicml_logger)
+from torch.distributed.fsdp import FullStateDictConfig
+from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
+from torch.distributed.fsdp import StateDictType
+from transformers import AutoModelForCausalLM, BitsAndBytesConfig, PreTrainedTokenizerBase
 
 install()
 from llmfoundry.callbacks import AsyncEval
 from llmfoundry.data.dataloader import build_dataloader
 from llmfoundry.layers_registry import ffns_with_megablocks
-from llmfoundry.utils.builders import (add_metrics_to_eval_loaders,
-                                       build_algorithm, build_callback,
-                                       build_composer_model, build_evaluators,
-                                       build_logger, build_optimizer,
-                                       build_scheduler, build_tokenizer)
-from llmfoundry.utils.config_utils import (log_config, pop_config,
-                                           process_init_device,
+from llmfoundry.utils.builders import (add_metrics_to_eval_loaders, build_algorithm, build_callback,
+                                       build_composer_model, build_evaluators, build_logger,
+                                       build_optimizer, build_scheduler, build_tokenizer)
+from llmfoundry.utils.config_utils import (log_config, pop_config, process_init_device,
                                            update_batch_size_info)
 from llmfoundry.utils.registry_utils import import_file
 
@@ -330,7 +316,7 @@ def main(cfg: DictConfig) -> Trainer:
     hf_save_path: Union[int, str] = pop_config(cfg,
                                                'hf_save_path',
                                                must_exist=True)
-                                                       
+
     eval_loader_config: Optional[Union[DictConfig, ListConfig]] = pop_config(
         cfg, 'eval_loader', must_exist=False, default_value=None)
     icl_tasks_config: Optional[Union[ListConfig,
@@ -622,7 +608,7 @@ def main(cfg: DictConfig) -> Trainer:
         model = build_composer_peft_model(model_config, rosa_config, tokenizer, is_fsdp=fsdp_config is not None)
         if rosa_config is not None:
             assert isinstance(model.model.base_model, RosaModel)
-    
+
     # Algorithms
     algorithms = [
         build_algorithm(str(name), algorithm_cfg)
@@ -631,10 +617,12 @@ def main(cfg: DictConfig) -> Trainer:
 
     if rosa_config is not None:
         algorithms.append(RosaScheduler(model.model.base_model))
-    
+
     # Dataloaders
     log.info('Building train loader...')
     try:
+        from datasets import disable_caching
+        disable_caching()
         train_loader = build_dataloader(
             train_loader_config,
             tokenizer,
@@ -726,7 +714,7 @@ def main(cfg: DictConfig) -> Trainer:
             {'params': lora_params, 'lr': rosa_config['lora_lr']}
         ]
         optimizer = DecoupledAdamW(params, **optimizer_config)
-    
+
 
 
     # Now add the eval metrics
@@ -799,7 +787,7 @@ def main(cfg: DictConfig) -> Trainer:
     log.info('Starting training...')
     trainer.fit()
 
-    # if rosa is enabled, save the model manually, since 
+    # if rosa is enabled, save the model manually, since
     # llm-foundry's checkpointing doesn't work properly with RoSA
     if rosa_config is not None:
         assert fsdp_config is None, 'fsdp is cuurently not supported with RoSA'

@@ -1,2 +1,7 @@
 panza_workspace: ${hydra:runtime.cwd}/../
+checkpoint_dir: ${panza_workspace}/checkpoints
 seed: 42
+
+embedding_model: "sentence-transformers/all-mpnet-base-v2"
+
+wandb_disabled: false
