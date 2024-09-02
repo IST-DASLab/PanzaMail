@@ -4,6 +4,16 @@ version = "2024.08.14"
 description = "A personal email assistant, trained and running on-device."
 dependencies = [
     "torch==2.2.2",
+    "ollama",
+    "omegaconf",
+    "fastapi",
+    "uvicorn",
+    "pydantic",
+    "python-dotenv"
+]
+
+[project.optional-dependencies]
+training = [
     "langdetect",
     "langchain",
     "langchain-community",
@@ -17,11 +27,9 @@ dependencies = [
     "cmake",
     "packaging",
     "nltk",
-    "ollama",
     "llm-foundry@git+https://github.com/IST-DASLab/llm-foundry",
     "peft@git+https://github.com/IST-DASLab/peft-rosa.git@grad_quant_looser_versioning",
     "spops-sm-80",
-    "omegaconf",
 ]
 
 [build-system]
