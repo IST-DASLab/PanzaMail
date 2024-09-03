@@ -4,6 +4,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, HTTPException, Header
 from fastapi.responses import StreamingResponse
+from panza3.entities.instruction import EmailInstruction, Instruction
+from panza3.writer import PanzaWriter
 import uvicorn
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -17,8 +19,9 @@ class Request(BaseModel):
 class PanzaWebService:
     DEFAULT_PORT = 5001
 
-    def __init__(self, port=DEFAULT_PORT):
+    def __init__(self, writer: PanzaWriter, port=DEFAULT_PORT):
         self.app = FastAPI()
+        self.writer = writer
         self.port = port
         self._setup_routes()
         load_dotenv()
@@ -43,10 +46,9 @@ class PanzaWebService:
             yield chunk["message"]["content"]
 
     def _predict(self, input: str) -> Generator:
-        # TODO: Call PanzaWriter here
-        # Dummy generator
-        for i in range(10):
-            yield {"message": {"content": f"Generated text {i}"}}
+        instruction: Instruction = EmailInstruction(input)
+        stream: Generator = self.writer.run(instruction, stream=True)
+        return stream
 
     def _setup_routes(self):
         @self.app.options("/generate")
