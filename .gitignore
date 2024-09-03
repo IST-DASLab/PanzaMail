@@ -6,6 +6,7 @@ __pycache__/
 checkpoints/
 results/
 wandb/
+outputs/
 
 *.log
 *.egg-info
