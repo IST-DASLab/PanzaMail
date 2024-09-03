@@ -44,8 +44,33 @@ def create_run_name(cfg: DictConfig) -> str:
     return run_name
 
 
-def determine_rosa_schedule(cfg: DictConfig) -> str:
-    pass
+def override_rosa_schedule(cfg: DictConfig, mask_generation=False) -> None:
+    # Disable struct mode to allow modifications
+    rosa_cfg = cfg.finetuning.rosa
+    OmegaConf.set_struct(rosa_cfg, False)
+
+    mask_path = str(Path(cfg.checkpoint_dir) / "masks" / cfg.finetuning.run_name)
+
+    if mask_generation:
+        rosa_cfg.schedule = "wl16" if rosa_cfg.lora_r != 0 else "spa_only"
+        rosa_cfg.mask_load_path = None
+        rosa_cfg.mask_save_path = mask_path
+        rosa_cfg.terminate_after_mask_generation = True
+    else:
+        if rosa_cfg.spa_d == 0 and rosa_cfg.lora_r != 0:
+            rosa_cfg.schedule = "default"
+        elif rosa_cfg.lora_r != 0:
+            rosa_cfg.schedule = "lora_only"
+            rosa_cfg.mask_load_path = None
+        else:
+            rosa_cfg.schedule = "spa_only"
+
+        rosa_cfg.mask_load_path = mask_path
+        rosa_cfg.mask_save_path = None
+        rosa_cfg.terminate_after_mask_generation = None
+
+    # Re-enable struct mode to lock down the configuration
+    OmegaConf.set_struct(rosa_cfg, True)
 
 
 def create_experiment_yaml() -> str:
@@ -54,18 +79,18 @@ def create_experiment_yaml() -> str:
 
 def create_checkpoint_dirs(cfg: DictConfig) -> None:
     # Create model directory
-    os.makedirs(cfg.finetuning.hf_save_path)
+    os.makedirs(os.path.join(cfg.checkpoint_dir, "models"), exist_ok=True)
 
     # Create mask directory
     if hasattr(cfg.finetuning, "rosa"):
-        os.makedirs(cfg.finetuning.rosa.mask_save_path)
+        os.makedirs(os.path.join(cfg.checkpoint_dir, "masks"), exist_ok=True)
 
 
 def get_hf_save_precision(cfg: DictConfig) -> str:
     if cfg.model_precision == "bf16":
         return "bfloat16"
     elif cfg.model_precision == "fp32":
-        return "fp32"
+        return "float32"
     else:
         raise ValueError(f"Unsupported model_precision: {cfg.model_precision}")
 
@@ -88,7 +113,7 @@ def override_config(cfg: DictConfig) -> None:
     cfg.finetuning.run_name = create_run_name(cfg)
 
     if hasattr(cfg.finetuning, "rosa"):
-        pass
+        cfg.finetuning.rosa.rosa_dtype = get_rosa_dtype(cfg)
     else:
         cfg.finetuning.callbacks.hf_checkpointer.precision = get_hf_save_precision(cfg)
 
@@ -117,20 +142,6 @@ def launch_experiment(cfg: DictConfig, finetuning_yaml: str, prompt_builder_yaml
             parent.wait(5)
         except psutil.NoSuchProcess:
             pass
-
-    def move_checkpoint_files(cfg: DictConfig) -> None:
-        # Move checkpoint files to the final directory
-        run_save_path = Path(cfg.hf_save_path) / "models" / cfg.run_name
-        huggingface_dir = run_save_path / "huggingface"
-        last_save_dir_name = max(huggingface_dir.iterdir(), key=os.path.getmtime).name
-
-        # Move the contents of the last saved directory to the run save path
-        source_dir = huggingface_dir / last_save_dir_name
-        for item in source_dir.iterdir():
-            shutil.move(str(item), run_save_path)
-
-        # Remove the now-empty huggingface directory
-        shutil.rmtree(huggingface_dir)
 
     train_script = os.path.join(cfg.panza_workspace, "src/panza3/finetuning/train.py")
     environment = os.environ.copy()
@@ -170,10 +181,20 @@ def launch_experiment(cfg: DictConfig, finetuning_yaml: str, prompt_builder_yaml
             torch.cuda.empty_cache()
             time.sleep(3)  # Give some time for GPU resources to be released
 
-        if not hasattr(cfg.finetuning, "rosa"):
-            move_checkpoint_files(cfg)
 
-        print("Find the finetuned model at", os.path.join(cfg.hf_save_path, "models", cfg.run_name))
+def move_checkpoint_files(cfg: DictConfig) -> None:
+    # Move checkpoint files to the final directory
+    run_save_path = Path(cfg.hf_save_path) / "models" / cfg.finetuning.run_name
+    huggingface_dir = run_save_path / "huggingface"
+    last_save_dir_name = max(huggingface_dir.iterdir(), key=os.path.getmtime).name
+
+    # Move the contents of the last saved directory to the run save path
+    source_dir = huggingface_dir / last_save_dir_name
+    for item in source_dir.iterdir():
+        shutil.move(str(item), run_save_path)
+
+    # Remove the now-empty huggingface directory
+    shutil.rmtree(huggingface_dir)
 
 
 @hydra.main(version_base="1.1", config_path="../configs", config_name="panza_finetuning")
@@ -184,13 +205,32 @@ def main(cfg: DictConfig) -> None:
     # Override configuration
     override_config(cfg)
 
+    create_checkpoint_dirs(cfg)
+
     # Launch training
+    preprocessing_yaml = save_config_to_yaml(cfg.preprocessing)
+
     if "rosa" in cfg.finetuning:
-        pass
+        # Generate masks
+        if cfg.finetuning.rosa.spa_d != 0:
+            override_rosa_schedule(cfg, mask_generation=True)
+            finetuning_yaml = save_config_to_yaml(cfg.finetuning)
+            # pdb.set_trace()
+            launch_experiment(cfg, finetuning_yaml, preprocessing_yaml)
+        # RoSA finetuning
+        override_rosa_schedule(cfg, mask_generation=False)
+        finetuning_yaml = save_config_to_yaml(cfg.finetuning)
+        # pdb.set_trace()
+        launch_experiment(cfg, finetuning_yaml, preprocessing_yaml)
     else:
         finetuning_yaml = save_config_to_yaml(cfg.finetuning)
-        preprocessing_yaml = save_config_to_yaml(cfg.preprocessing)
         launch_experiment(cfg, finetuning_yaml, preprocessing_yaml)
+        move_checkpoint_files(cfg)
+
+    print(
+        "Find the finetuned model at",
+        os.path.join(cfg.hf_save_path, "models", cfg.finetuning.run_name),
+    )
 
 
 if __name__ == "__main__":
