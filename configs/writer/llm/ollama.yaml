@@ -1,1 +1,6 @@
-# TODO: Add Ollama config
+defaults:
+  - sampling: random
+
+_target_: panza3.llm.OllamaLLM
+name: "custom"
+gguf_file: "custom.gguf"
