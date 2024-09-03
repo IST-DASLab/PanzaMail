@@ -73,7 +73,7 @@ class FaissRetriever(DocumentRetriever):
 
         # Deserialize metadata
         results = [
-            (self.document_class.deserialize(r[0].metadata["serialized_document"]), r[1])
+            (self.document_class.deserialize(r[0].metadata["serialized_email"]), r[1])
             for r in results
         ]
 
