@@ -17,9 +17,7 @@ class Request(BaseModel):
 
 
 class PanzaWebService:
-    DEFAULT_PORT = 5001
-
-    def __init__(self, writer: PanzaWriter, port=DEFAULT_PORT):
+    def __init__(self, writer: PanzaWriter, port: int):
         self.app = FastAPI()
         self.writer = writer
         self.port = port
