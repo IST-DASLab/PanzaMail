@@ -75,8 +75,6 @@ def test_email_prompt_builder(
         + "E-MAIL CONTENT:\nemail2\n\n---\n\n"
         + "THREAD PREAMBLE:\n\n"
         + "email1\n\n---\n\n"
-        + "email2\n\n---\n\n"
-        + "email3\n\n---\n\n"
         + "Instruction: Write an email."
     )
 
@@ -87,8 +85,6 @@ def test_email_prompt_builder(
         + "<USER PREAMBLE>\n\n"
         + "THREAD PREAMBLE:\n\n"
         + "email1\n\n---\n\n"
-        + "email2\n\n---\n\n"
-        + "email3\n\n---\n\n"
         + "Instruction: Write an email."
     )
 

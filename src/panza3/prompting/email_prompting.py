@@ -117,7 +117,9 @@ class EmailPromptBuilder(PromptBuilder):
             rag_prompt = ""
 
         if use_thread:
-            thread_prompt = self._create_threading_preamble(instruction.thread).strip()
+            thread_prompt = self._create_threading_preamble(
+                instruction.thread[: self.number_thread_emails]
+            ).strip()
         else:
             thread_prompt = ""
 
