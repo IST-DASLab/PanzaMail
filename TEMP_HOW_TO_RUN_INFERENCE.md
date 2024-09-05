@@ -32,13 +32,11 @@ If running locally, then the Panza model needs to be located in `data`.
 
 In the `configs folder` add a user YAML file for yourself in `/user`.
 
-Then, in `/writer/email.yaml`, change the `llm` field to the backend of your choice. Either `ollama` or `peft` (local) or `transformers` (local).
-
 If running with Ollama, edit the `name` and `gguf` fields in `/writer/llm/ollama.yaml` with a name of your choice and the path to the GGUF file.
 
 ## Step 4: Run Panza
 
 To run Panza, cd into the `scripts` directory and run:
 ```bash
-python3 runner.py interfaces=<cli/gui/web>
+python3 runner.py user=<your name> interfaces=<cli/gui/web> writer/llm=<ollama/peft/transformers>
 ```
