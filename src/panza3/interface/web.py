@@ -26,6 +26,7 @@ class PanzaWebService:
         self._add_cors()
         self.api_keys = self._get_valid_api_keys()
         self._start_server()
+        self.server_thread = None
 
     def _add_cors(self):
         self.app.add_middleware(
@@ -61,4 +62,18 @@ class PanzaWebService:
             return StreamingResponse(self._streamer(stream), media_type="text/event-stream")
 
     def _start_server(self):
-        uvicorn.run(self.app, port=self.port)
+        self.server_thread = threading.Thread(
+            target=uvicorn.run,
+            args=(self.app,),
+            kwargs={"port": self.port},
+            daemon=False,
+        )
+        self.server_thread.start()
+        print("Panza web server started.")
+
+    def _stop_server(self):
+        if self.server_thread is None:
+            return
+        self.server_thread.join()
+        self.server_thread = None
+        print("Panza web server stopped.")
