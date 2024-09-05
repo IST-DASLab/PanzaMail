@@ -1,8 +1,10 @@
 defaults:
   - base
   - writer: email
-  - user: seanyang711
+  - user: default
   - interfaces:
       - gui
+      # - cli
+      # - web
 
 checkpoint: "microsoft/Phi-3-mini-4k-instruct"
