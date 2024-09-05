@@ -4,9 +4,12 @@ import copy
 import gc
 import logging
 import os
+import random
 import sys
+import tempfile
 import time
 import warnings
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 import torch
@@ -21,6 +24,7 @@ from composer.metrics.nlp import (InContextLearningCodeEvalAccuracy, InContextLe
 from composer.optim import DecoupledAdamW
 from composer.profiler import JSONTraceHandler, Profiler, TraceHandler, cyclic_schedule
 from composer.utils import dist, get_device, reproducibility
+from datasets import disable_caching
 from llmfoundry import ComposerHFCausalLM
 from llmfoundry.eval.metrics.nlp import InContextLearningMetric
 from llmfoundry.models.hf.model_wrapper import HuggingFaceModelWithFSDP
@@ -46,6 +50,11 @@ from llmfoundry.utils.builders import (add_metrics_to_eval_loaders, build_algori
 from llmfoundry.utils.config_utils import (log_config, pop_config, process_init_device,
                                            update_batch_size_info)
 from llmfoundry.utils.registry_utils import import_file
+
+import hydra
+from omegaconf import DictConfig, OmegaConf
+
+from panza3 import PanzaWriter  # The import also loads custom Hydra resolvers
 
 log = logging.getLogger(__name__)
 
@@ -122,6 +131,114 @@ def validate_config(cfg: DictConfig):
             raise ValueError(
                 f'MoEs with expert parallelism (moe_world_size {moe_world_size} > 1) require `use_orig_params=True`.'
             )
+
+
+def create_run_name(cfg: DictConfig) -> str:
+    # export RUN_NAME=panza_${PANZA_USERNAME}_${MODEL_TYPE}_${MODEL_PRECISION}-bs${BS}-fft-lr${LR}-epochs${NUM_EPOCHS}-wu${WARMUP}-seed${SEED}${PREAMBLE_STR}${RAFT_STR}
+
+    run_name = f"panza_{cfg.user.username}"
+
+    model_name = cfg.model.split("/")[-1]
+    run_name += f"-{model_name}"
+
+    run_name += f"-{cfg.model_precision}"
+    run_name += f"-bs{cfg.batch_size}"
+
+    if hasattr(cfg.finetuning, "rosa"):
+        run_name += "-rosa"
+    else:
+        run_name += "-fft"
+
+    run_name += f"-lr{cfg.lr}"
+    run_name += f"-epochs{cfg.num_epochs}"
+    run_name += f"-seed{cfg.seed}"
+
+    return run_name
+
+
+def override_rosa_schedule(cfg: DictConfig, mask_generation=False) -> None:
+    # Disable struct mode to allow modifications
+    rosa_cfg = cfg.finetuning.rosa
+    OmegaConf.set_struct(rosa_cfg, False)
+
+    mask_path = str(Path(cfg.checkpoint_dir) / "masks" / cfg.finetuning.run_name)
+
+    if mask_generation:
+        rosa_cfg.schedule = "wl16" if rosa_cfg.lora_r != 0 else "spa_only"
+        rosa_cfg.mask_load_path = None
+        rosa_cfg.mask_save_path = mask_path
+        rosa_cfg.terminate_after_mask_generation = True
+    else:
+        if rosa_cfg.spa_d == 0 and rosa_cfg.lora_r != 0:
+            rosa_cfg.schedule = "default"
+        elif rosa_cfg.lora_r != 0:
+            rosa_cfg.schedule = "lora_only"
+            rosa_cfg.mask_load_path = None
+        else:
+            rosa_cfg.schedule = "spa_only"
+
+        rosa_cfg.mask_load_path = mask_path
+        rosa_cfg.mask_save_path = None
+        rosa_cfg.terminate_after_mask_generation = None
+
+    # Re-enable struct mode to lock down the configuration
+    OmegaConf.set_struct(rosa_cfg, True)
+
+
+def create_experiment_yaml() -> str:
+    pass
+
+
+def create_checkpoint_dirs(cfg: DictConfig) -> None:
+    # Create model directory
+    os.makedirs(os.path.join(cfg.checkpoint_dir, "models"), exist_ok=True)
+
+    # Create mask directory
+    if hasattr(cfg.finetuning, "rosa"):
+        os.makedirs(os.path.join(cfg.checkpoint_dir, "masks"), exist_ok=True)
+
+
+def get_hf_save_precision(cfg: DictConfig) -> str:
+    if cfg.model_precision == "bf16":
+        return "bfloat16"
+    elif cfg.model_precision == "fp32":
+        return "float32"
+    else:
+        raise ValueError(f"Unsupported model_precision: {cfg.model_precision}")
+
+
+def get_rosa_dtype(cfg: DictConfig) -> str:
+    if cfg.model_precision == "bf16":
+        return "bg16"
+    elif cfg.model_precision == "fp32":
+        return "fp32"
+    elif cfg.model_precision == "4bit":
+        return "fp32"
+    else:
+        raise ValueError(f"Unsupported model_precision: {cfg.model_precision}")
+
+
+def override_config(cfg: DictConfig) -> None:
+    # Disable struct mode to allow modifications
+    OmegaConf.set_struct(cfg, False)
+
+    if not cfg.finetuning.run_name:
+        cfg.finetuning.run_name = create_run_name(cfg)
+
+    if hasattr(cfg.finetuning, "rosa"):
+        cfg.finetuning.rosa.rosa_dtype = get_rosa_dtype(cfg)
+    else:
+        cfg.finetuning.callbacks.hf_checkpointer.precision = get_hf_save_precision(cfg)
+
+    # Re-enable struct mode to lock down the configuration
+    OmegaConf.set_struct(cfg, True)
+
+
+def save_config_to_yaml(cfg: DictConfig) -> str:
+    cfg = OmegaConf.to_container(cfg, resolve=True)
+    with tempfile.NamedTemporaryFile("w", delete=False, suffix=".yaml") as temp_file:
+        OmegaConf.save(config=cfg, f=temp_file.name)
+        return temp_file.name
 
 
 def build_composer_peft_model(
@@ -214,7 +331,30 @@ def build_composer_peft_model(
     # model = ModelComposerHFCausalLM(model, tokenizer)
     return model
 
+@hydra.main(version_base="1.1", config_path="../../../configs", config_name="panza_finetuning")
 def main(cfg: DictConfig) -> Trainer:
+    override_config(cfg)
+
+    #raise ValueError(cfg)
+    # The preprocessing config is saved to a temporary directory
+    # and accessed through an environment variable. Note that this
+    # happens separately for each process (however, a collision should)
+    # not be a problem, since the configs are the same.
+    preprocessing_yaml = save_config_to_yaml(cfg.preprocessing)
+
+    #create_checkpoint_dirs(cfg)
+    environment = os.environ
+    # I don't think we need this, since panza is loaded with pip.
+    #environment["PYTHONPATH"] = os.path.join(cfg.panza_workspace, "src")
+    environment["WANDB_PROJECT"] = f"panza-{cfg.user.username}"
+    environment["WANDB_DISABLED"] = str(int(cfg.wandb_disabled))
+    environment["PANZA_PREPROCESSING_CONFIG"] = preprocessing_yaml
+
+    cfg = cfg.finetuning
+
+    # Make the config editable for popping.
+    OmegaConf.set_struct(cfg, False)
+
     # Run user provided code if specified
     code_paths = pop_config(cfg,
                             'code_paths',
@@ -538,6 +678,7 @@ def main(cfg: DictConfig) -> Trainer:
     log.info('Building tokenizer...')
     tokenizer_name = tokenizer_config['name']
     tokenizer_kwargs = tokenizer_config.get('kwargs', {})
+    tokenizer_kwargs["num_proc"] = 1
     tokenizer = build_tokenizer(tokenizer_name, tokenizer_kwargs)
 
     # Scheduler
@@ -621,7 +762,6 @@ def main(cfg: DictConfig) -> Trainer:
     # Dataloaders
     log.info('Building train loader...')
     try:
-        from datasets import disable_caching
         disable_caching()
         train_loader = build_dataloader(
             train_loader_config,
@@ -822,17 +962,32 @@ def main(cfg: DictConfig) -> Trainer:
     return trainer
 
 
+
+def do_thing(cfg:DictConfig) -> List[str]:
+    # Override configuration
+    override_config(cfg)
+
+    create_checkpoint_dirs(cfg)
+
+    # Launch training
+    preprocessing_yaml = save_config_to_yaml(cfg.preprocessing)
+    finetuning_yaml = save_config_to_yaml(cfg.finetuning)
+    print(preprocessing_yaml, finetuning_yaml)
+
+
 if __name__ == '__main__':
-    yaml_path, args_list = sys.argv[1], sys.argv[2:]
+    ARGS_LIST = sys.argv[1:]
 
+    # TODO: do we need this?
     # Disable resolving environment variables through omegaconf.
-    om.clear_resolver('oc.env')
+    # om.clear_resolver('oc.env')
 
-    # Load yaml and cli arguments.
-    with open(yaml_path) as f:
-        yaml_cfg = om.load(f)
-    cli_cfg = om.from_cli(args_list)
-    cfg = om.merge(yaml_cfg, cli_cfg)
-    om.resolve(cfg)
-    assert isinstance(cfg, DictConfig)
-    main(cfg)
+    #    #log.info("Configuration: \n%s", OmegaConf.to_yaml(cfg, resolve=True))
+    # # Load yaml and cli arguments.
+    # with open(yaml_path) as f:
+    #     yaml_cfg = om.load(f)
+    # cli_cfg = om.from_cli(args_list)
+    # cfg = om.merge(yaml_cfg, cli_cfg)
+    # om.resolve(cfg)
+    # assert isinstance(cfg, DictConfig)
+    main()
