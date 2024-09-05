@@ -40,3 +40,7 @@ To run Panza, cd into the `scripts` directory and run:
 ```bash
 python3 runner.py user=<your name> interfaces=<cli/gui/web> writer/llm=<ollama/peft/transformers>
 ```
+For example, to run with Ollama and the CLI interface with the user `test`, run:
+```bash
+python3 runner.py user=test interfaces=cli writer/llm=ollama
+```
