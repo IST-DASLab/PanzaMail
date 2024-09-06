@@ -10,16 +10,17 @@ dependencies = [
     "uvicorn",
     "pydantic",
     "python-dotenv",
-    "hydra-core"
+    "hydra-core",
+    "langchain",
+    "langchain-community",
+    "sentence-transformers",
+    "faiss-cpu",
+    "gradio",
 ]
 
 [project.optional-dependencies]
 training = [
     "langdetect",
-    "langchain",
-    "langchain-community",
-    "sentence-transformers",
-    "faiss-cpu",
     "fire",
     "mauve-text",
     "evaluate",

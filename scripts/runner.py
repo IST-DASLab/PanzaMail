@@ -35,12 +35,8 @@ def main(cfg: DictConfig) -> None:
     writer: PanzaWriter = hydra.utils.instantiate(cfg.writer)
     assert isinstance(writer, PanzaWriter), "Failed to instantiate PanzaWriter"
 
-    # TODO: Connect to CLI / GUI / webserver, etc.
-    output, prompt = writer.run(
-        instruction=EmailInstruction(instruction="Write an email."), return_prompt=True
-    )
-    print("Prompt:", prompt)
-    print("Output:", output)
+    # Instantiate interfaces (CLI, GUI, web, etc) as specified in the configuration
+    hydra.utils.instantiate(cfg.interfaces, writer=writer)
 
 
 if __name__ == "__main__":

@@ -12,13 +12,13 @@ except ImportError:
 
 
 class OllamaLLM(LLM):
-    def __init__(self, name: str, gguf_file: str, sampling_params: Dict):
+    def __init__(self, name: str, gguf_file: str, sampling_parameters: Dict):
         """
         Loads and serves the model from the GGUF file into Ollama with the given name and sampling parameters.
         """
-        super().__init__(name, sampling_params)
+        super().__init__(name, sampling_parameters)
         self.gguf_file = gguf_file
-        self.sampling_params = sampling_params
+        self.sampling_params = sampling_parameters
 
         if not self._is_ollama_running():
             self._start_ollama()

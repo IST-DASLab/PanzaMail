@@ -4,6 +4,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, HTTPException, Header
 from fastapi.responses import StreamingResponse
+from panza3.entities.instruction import EmailInstruction, Instruction
+from panza3.writer import PanzaWriter
 import uvicorn
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -15,16 +17,16 @@ class Request(BaseModel):
 
 
 class PanzaWebService:
-    DEFAULT_PORT = 5001
-
-    def __init__(self, port=DEFAULT_PORT):
+    def __init__(self, writer: PanzaWriter, port: int):
         self.app = FastAPI()
+        self.writer = writer
         self.port = port
         self._setup_routes()
         load_dotenv()
         self._add_cors()
         self.api_keys = self._get_valid_api_keys()
         self._start_server()
+        self.server_thread = None
 
     def _add_cors(self):
         self.app.add_middleware(
@@ -43,10 +45,9 @@ class PanzaWebService:
             yield chunk["message"]["content"]
 
     def _predict(self, input: str) -> Generator:
-        # TODO: Call PanzaWriter here
-        # Dummy generator
-        for i in range(10):
-            yield {"message": {"content": f"Generated text {i}"}}
+        instruction: Instruction = EmailInstruction(input)
+        stream: Generator = self.writer.run(instruction, stream=True)
+        return stream
 
     def _setup_routes(self):
         @self.app.options("/generate")
@@ -61,4 +62,18 @@ class PanzaWebService:
             return StreamingResponse(self._streamer(stream), media_type="text/event-stream")
 
     def _start_server(self):
-        uvicorn.run(self.app, port=self.port)
+        self.server_thread = threading.Thread(
+            target=uvicorn.run,
+            args=(self.app,),
+            kwargs={"port": self.port},
+            daemon=False,
+        )
+        self.server_thread.start()
+        print("Panza web server started.")
+
+    def _stop_server(self):
+        if self.server_thread is None:
+            return
+        self.server_thread.join()
+        self.server_thread = None
+        print("Panza web server stopped.")
