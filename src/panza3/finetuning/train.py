@@ -168,8 +168,9 @@ def override_rosa_schedule(cfg: DictConfig, mask_generation=False) -> None:
         rosa_cfg.mask_load_path = None
         rosa_cfg.mask_save_path = mask_path
         rosa_cfg.terminate_after_mask_generation = True
+        rosa_cfg.mask_gen_model_precision = 'amp_bf16'
     else:
-        if rosa_cfg.spa_d == 0 and rosa_cfg.lora_r != 0:
+        if rosa_cfg.spa_d > 0 and rosa_cfg.lora_r != 0:
             rosa_cfg.schedule = "default"
         elif rosa_cfg.lora_r != 0:
             rosa_cfg.schedule = "lora_only"
@@ -209,7 +210,7 @@ def get_hf_save_precision(cfg: DictConfig) -> str:
 
 def get_rosa_dtype(cfg: DictConfig) -> str:
     if cfg.model_precision == "bf16":
-        return "bg16"
+        return "bf16"
     elif cfg.model_precision == "fp32":
         return "fp32"
     elif cfg.model_precision == "4bit":
@@ -227,6 +228,8 @@ def override_config(cfg: DictConfig) -> None:
 
     if hasattr(cfg.finetuning, "rosa"):
         cfg.finetuning.rosa.rosa_dtype = get_rosa_dtype(cfg)
+        if cfg.finetuning.rosa.spa_d != 0:
+            override_rosa_schedule(cfg, mask_generation=cfg.finetuning.rosa.masks_only)
     else:
         cfg.finetuning.callbacks.hf_checkpointer.precision = get_hf_save_precision(cfg)
 
@@ -301,6 +304,7 @@ def build_composer_peft_model(
             bias="none",
             task_type="CAUSAL_LM",
         )
+        #raise ValueError(config)
         print('Adding RoSA modules...')
         model = get_peft_model(model, config)
         print('RoSA modules added!')
@@ -335,7 +339,7 @@ def build_composer_peft_model(
 def main(cfg: DictConfig) -> Trainer:
     override_config(cfg)
 
-    #raise ValueError(cfg)
+    #!!!
     # The preprocessing config is saved to a temporary directory
     # and accessed through an environment variable. Note that this
     # happens separately for each process (however, a collision should)
@@ -351,6 +355,7 @@ def main(cfg: DictConfig) -> Trainer:
     environment["PANZA_PREPROCESSING_CONFIG"] = preprocessing_yaml
 
     cfg = cfg.finetuning
+    #raise ValueError(cfg)
 
     # Make the config editable for popping.
     OmegaConf.set_struct(cfg, False)
@@ -874,6 +879,10 @@ def main(cfg: DictConfig) -> Trainer:
 
     # Build the Trainer
     log.info('Building trainer...')
+    dtypes = {x.dtype for x in model.parameters()}
+    print(dtypes)
+    #raise ValueError(dtypes)
+    #raise ValueError(model.dtype)
     trainer = Trainer(
         run_name=run_name,
         seed=seed,

@@ -17,7 +17,7 @@ rosa:
   mask_save_path: #TODO
   terminate_after_mask_generation: #TODO
   schedule: #TODO
-  mask_gen_model_precision: #TODO
+  masks_only: true
 
 scheduler:
   t_warmup: 8ba
