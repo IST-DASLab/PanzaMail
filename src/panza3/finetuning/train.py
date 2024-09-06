@@ -1,11 +1,10 @@
 # Copyright 2022 MosaicML LLM Foundry authors
 # SPDX-License-Identifier: Apache-2.0
+
 import copy
 import gc
 import logging
 import os
-import random
-import sys
 import tempfile
 import time
 import warnings
@@ -339,7 +338,6 @@ def build_composer_peft_model(
 def main(cfg: DictConfig) -> Trainer:
     override_config(cfg)
 
-    #!!!
     # The preprocessing config is saved to a temporary directory
     # and accessed through an environment variable. Note that this
     # happens separately for each process (however, a collision should)
@@ -985,18 +983,4 @@ def do_thing(cfg:DictConfig) -> List[str]:
 
 
 if __name__ == '__main__':
-    ARGS_LIST = sys.argv[1:]
-
-    # TODO: do we need this?
-    # Disable resolving environment variables through omegaconf.
-    # om.clear_resolver('oc.env')
-
-    #    #log.info("Configuration: \n%s", OmegaConf.to_yaml(cfg, resolve=True))
-    # # Load yaml and cli arguments.
-    # with open(yaml_path) as f:
-    #     yaml_cfg = om.load(f)
-    # cli_cfg = om.from_cli(args_list)
-    # cfg = om.merge(yaml_cfg, cli_cfg)
-    # om.resolve(cfg)
-    # assert isinstance(cfg, DictConfig)
     main()
