@@ -88,6 +88,7 @@ class FaissRetriever(DocumentRetriever):
         if self.db:
             self.db.merge_from(db)
         else:
+            LOGGER.info(f"Creating new Faiss index {self.index_name} in {self.db_path}.")
             self.db = db
 
     def save_db_to_disk(self):
