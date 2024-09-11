@@ -140,17 +140,17 @@ def create_run_name(cfg: DictConfig) -> str:
     model_name = cfg.model.split("/")[-1]
     run_name += f"-{model_name}"
 
-    run_name += f"-{cfg.model_precision}"
-    run_name += f"-bs{cfg.batch_size}"
+    run_name += f"-{cfg.finetuning.model_precision}"
+    run_name += f"-bs{cfg.finetuning.batch_size}"
 
     if hasattr(cfg.finetuning, "rosa"):
         run_name += "-rosa"
     else:
         run_name += "-fft"
 
-    run_name += f"-lr{cfg.lr}"
-    run_name += f"-epochs{cfg.num_epochs}"
-    run_name += f"-seed{cfg.seed}"
+    run_name += f"-lr{cfg.finetuning.lr}"
+    run_name += f"-{cfg.finetuning.max_duration}"
+    run_name += f"-seed{cfg.finetuning.seed}"
 
     return run_name
 
@@ -334,9 +334,12 @@ def build_composer_peft_model(
     # model = ModelComposerHFCausalLM(model, tokenizer)
     return model
 
-@hydra.main(version_base="1.1", config_path="../../../configs", config_name="panza_finetuning")
+@hydra.main(version_base="1.1", config_path="../../../configs", config_name="base")
 def main(cfg: DictConfig) -> Trainer:
     override_config(cfg)
+
+    # Resolve all interpolation variables as early as possible
+    om.resolve(cfg)
 
     # The preprocessing config is saved to a temporary directory
     # and accessed through an environment variable. Note that this
@@ -881,6 +884,7 @@ def main(cfg: DictConfig) -> Trainer:
     print(dtypes)
     #raise ValueError(dtypes)
     #raise ValueError(model.dtype)
+    #raise ValueError([save_folder, save_overwrite, save_filename, save_latest_filename, save_interval, save_overwrite])
     trainer = Trainer(
         run_name=run_name,
         seed=seed,
@@ -967,20 +971,6 @@ def main(cfg: DictConfig) -> Trainer:
 
     log.info('Done.')
     return trainer
-
-
-
-def do_thing(cfg:DictConfig) -> List[str]:
-    # Override configuration
-    override_config(cfg)
-
-    create_checkpoint_dirs(cfg)
-
-    # Launch training
-    preprocessing_yaml = save_config_to_yaml(cfg.preprocessing)
-    finetuning_yaml = save_config_to_yaml(cfg.finetuning)
-    print(preprocessing_yaml, finetuning_yaml)
-
 
 if __name__ == '__main__':
     main()
