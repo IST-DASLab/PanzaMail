@@ -14,3 +14,8 @@ class Instruction(ABC):
 @dataclass(kw_only=True)
 class EmailInstruction(Instruction):
     thread: List[str] = field(default_factory=list)
+
+
+@dataclass(kw_only=True)
+class SummarizationInstruction(Instruction):
+    pass
