@@ -9,6 +9,7 @@ seed: 42
 
 model: "ISTA-DASLab/Meta-Llama-3-8B-Instruct"
 embedding_model: "sentence-transformers/all-mpnet-base-v2"
+model_precision: bf16 # bf16 or fp32
 
 preprocessing:
   model: ${model}

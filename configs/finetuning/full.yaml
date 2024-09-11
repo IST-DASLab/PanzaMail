@@ -6,7 +6,6 @@ max_duration: 3ep
 lr: 1e-5
 batch_size: 8
 eval_interval: 1
-model_precision: bf16 # bf16 or fp32
 seed: 42
 
 fsdp_config:

@@ -140,7 +140,7 @@ def create_run_name(cfg: DictConfig) -> str:
     model_name = cfg.model.split("/")[-1]
     run_name += f"-{model_name}"
 
-    run_name += f"-{cfg.finetuning.model_precision}"
+    run_name += f"-{cfg.model_precision}"
     run_name += f"-bs{cfg.finetuning.batch_size}"
 
     if hasattr(cfg.finetuning, "rosa"):
@@ -356,7 +356,6 @@ def main(cfg: DictConfig) -> Trainer:
     environment["PANZA_PREPROCESSING_CONFIG"] = preprocessing_yaml
 
     cfg = cfg.finetuning
-    #raise ValueError(cfg)
 
     # Make the config editable for popping.
     OmegaConf.set_struct(cfg, False)
