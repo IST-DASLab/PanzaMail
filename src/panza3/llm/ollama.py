@@ -18,7 +18,7 @@ class OllamaLLM(LLM):
         """
         super().__init__(name, sampling_parameters)
         self.gguf_file = gguf_file
-        self.sampling_params = sampling_parameters
+        self.sampling_parameters = sampling_parameters
 
         if not self._is_ollama_running():
             self._start_ollama()
@@ -48,13 +48,24 @@ class OllamaLLM(LLM):
                 return True
         return False
 
+    def _make_modelfile_parameters(self) -> str:
+        if self.sampling_parameters is None or self.sampling_parameters["do_sample"] == False:
+            return ""
+        return f"""
+          PARAMETER temperature {self.sampling_parameters["temperature"]}
+          PARAMETER top_k {self.sampling_parameters["top_k"]}
+          PARAMETER top_p {self.sampling_parameters["top_p"]}
+          PARAMETER num_predict {self.sampling_parameters["max_new_tokens"]}
+        """
+
     def _load_model(self) -> None:
-        # TODO: Add sampling parameters to the model file
         modelfile = f"""
         FROM {self.gguf_file}
+        {self._make_modelfile_parameters()}
         """
         try:
             ollama.create(model={self.name}, modelfile=modelfile, stream=True)
+            print("Loaded a new mode into Ollama.")
         except:
             raise Exception(f"Failed to load model {self.name} with GGUF file {self.gguf_file}.")
 
