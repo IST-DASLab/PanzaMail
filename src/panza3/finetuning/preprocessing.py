@@ -14,8 +14,8 @@ if PREPROCESSING_CONFIG_FILE:
     preprocessing_config = OmegaConf.load(PREPROCESSING_CONFIG_FILE)
     prompt_builder = hydra.utils.instantiate(preprocessing_config.prompting)
 
-    # Load tokenizer
-    config = AutoConfig.from_pretrained(preprocessing_config.model)
+    # Load tokenizer. The trust_remote_code parameter is necessary to load Phi-3.5.
+    config = AutoConfig.from_pretrained(preprocessing_config.model, trust_remote_code=True)
     tokenizer = AutoTokenizer.from_pretrained(
         preprocessing_config.model, model_max_length=config.max_position_embeddings
     )
@@ -27,7 +27,7 @@ def panza_preprocessing_function(inputs: Dict) -> Dict:
         instruction = EmailInstruction(instruction=prompt_raw, thread=inputs.get("thread", []))
         prompt = prompt_builder.build_prompt(instruction)
 
-        print(f"Prompt: {prompt}")
+        #print(f"Prompt: {prompt}")
 
         # Generate the full conversation
         conversation = [
