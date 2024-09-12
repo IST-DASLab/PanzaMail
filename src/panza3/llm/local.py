@@ -12,7 +12,7 @@ except ImportError:
     _MISSING_LIBRARIES.append("peft")
 
 try:
-    from transformers import AutoModelForCausalLM, AutoTokenizer
+    from transformers import AutoModelForCausalLM, AutoTokenizer, TextStreamer
 except ImportError:
     AutoModelForCausalLM = None
     AutoTokenizer = None
@@ -93,8 +93,25 @@ class LocalLLM(LLM):
         if isinstance(messages[0], (list, tuple)) or hasattr(messages[0], "messages"):
             raise TypeError("chat_stream does not support batched messages.")
 
-        # TODO: Implement chat_stream.
-        raise NotImplementedError("chat_stream is not implemented for LocalLLM.")
+        streamer = TextStreamer(self.tokenizer)
+        encodeds = self.tokenizer.apply_chat_template(
+            messages,
+            return_tensors="pt",
+            add_generation_prompt=True,
+            padding=True,
+            truncation=True,
+            return_dict=True,
+        )
+        model_inputs = encodeds.to(self.device)
+
+        self.model.generate(
+            model_inputs,
+            streamer=streamer,
+            **self.sampling_parameters,
+            pad_token_id=self.tokenizer.pad_token_id,
+        )
+
+        return streamer
 
     def _check_installation(self) -> None:
         if AutoModelForCausalLM is None or AutoTokenizer is None:
