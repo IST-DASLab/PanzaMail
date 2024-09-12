@@ -137,7 +137,7 @@ def create_run_name(cfg: DictConfig) -> str:
 
     run_name = f"panza_{cfg.user.username}"
 
-    model_name = cfg.model.split("/")[-1]
+    model_name = cfg.finetuning.model_name_or_path.split("/")[-1]
     run_name += f"-{model_name}"
 
     run_name += f"-{cfg.model_precision}"
@@ -334,7 +334,7 @@ def build_composer_peft_model(
     # model = ModelComposerHFCausalLM(model, tokenizer)
     return model
 
-@hydra.main(version_base="1.1", config_path="../../../configs", config_name="base")
+@hydra.main(version_base="1.1", config_path="../../../configs", config_name="panza_finetuning")
 def main(cfg: DictConfig) -> Trainer:
     override_config(cfg)
 
@@ -345,6 +345,8 @@ def main(cfg: DictConfig) -> Trainer:
     # and accessed through an environment variable. Note that this
     # happens separately for each process (however, a collision should)
     # not be a problem, since the configs are the same.
+    OmegaConf.set_struct(cfg, False)
+    cfg.preprocessing.model = cfg.finetuning.model_name_or_path
     preprocessing_yaml = save_config_to_yaml(cfg.preprocessing)
 
     #create_checkpoint_dirs(cfg)
@@ -352,7 +354,7 @@ def main(cfg: DictConfig) -> Trainer:
     # I don't think we need this, since panza is loaded with pip.
     #environment["PYTHONPATH"] = os.path.join(cfg.panza_workspace, "src")
     environment["WANDB_PROJECT"] = f"panza-{cfg.user.username}"
-    environment["WANDB_DISABLED"] = str(int(cfg.wandb_disabled))
+    environment["WANDB_DISABLED"] = str(int(cfg.finetuning.wandb_disabled))
     environment["PANZA_PREPROCESSING_CONFIG"] = preprocessing_yaml
 
     cfg = cfg.finetuning

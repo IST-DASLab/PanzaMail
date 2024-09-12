@@ -1,18 +1,9 @@
 defaults:
   - user: default
-  - finetuning: full
-  - writer/prompting/email_prompting@preprocessing.prompting
 
 panza_workspace: ${hydra:runtime.cwd}/../
 checkpoint_dir: ${panza_workspace}/checkpoints
 seed: 42
 
-model: "ISTA-DASLab/Meta-Llama-3-8B-Instruct"
 embedding_model: "sentence-transformers/all-mpnet-base-v2"
 model_precision: bf16 # bf16 or fp32
-
-preprocessing:
-  model: ${model}
-
-
-wandb_disabled: false

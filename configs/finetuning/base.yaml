@@ -1,6 +1,7 @@
+wandb_disabled: false
+
 max_seq_len: 512
 global_seed: ${seed}
-model_name_or_path: ${model}
 
 load_path:  # set via bash script to be absolute path to your sparse checkpoint
 precision: amp_bf16
