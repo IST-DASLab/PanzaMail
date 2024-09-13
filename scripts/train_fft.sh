@@ -24,8 +24,6 @@ do
     vars[1]=$argument
    elif [[ $key == finetuning ]]; then
     echo "The 'finetuning' argument is already set and should not be overridden here; override is ignored."
-   elif [[ $key == finetuning.rosa.masks_only ]]; then
-    echo "The 'finetuning.rosa.masks_only' argument is already set and should not be overridden here; override is ignored."
    else
     vars[idx]=$argument
     idx+=1
