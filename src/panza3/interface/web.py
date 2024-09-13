@@ -42,7 +42,7 @@ class PanzaWebService:
 
     def _streamer(self, stream):
         for chunk in stream:
-            yield chunk["message"]["content"]
+            yield chunk
 
     def _predict(self, input: str) -> Generator:
         instruction: Instruction = EmailInstruction(input)
