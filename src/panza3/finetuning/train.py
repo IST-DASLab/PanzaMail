@@ -3,8 +3,10 @@
 
 import copy
 import gc
+import glob
 import logging
 import os
+import shutil
 import tempfile
 import time
 import warnings
@@ -938,6 +940,16 @@ def main(cfg: DictConfig) -> Trainer:
 
     log.info('Starting training...')
     trainer.fit()
+
+    # Hacky solution for moving the model checkpoint from the
+    # subdirectory that the HF writer wrote it into, and into
+    # our desired and expected location.
+    if torch.distributed.get_rank() == 0:
+        path_to_save = os.path.join(hf_save_path, run_name)
+        hf_output_path = os.path.join(path_to_save, "huggingface")
+        for filename in glob.glob(os.path.join(hf_output_path, "*", "*")):
+            shutil.copy(filename, path_to_save)
+        shutil.rmtree(os.path.join(hf_output_path))
 
     # if rosa is enabled, save the model manually, since
     # llm-foundry's checkpointing doesn't work properly with RoSA
