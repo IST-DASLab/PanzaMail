@@ -98,17 +98,15 @@ class EmailPromptBuilder(PromptBuilder):
     def build_prompt(
         self,
         instruction: EmailInstruction,
-        use_rag: bool = True,
-        use_thread: bool = True,
     ) -> str:
 
-        if use_rag and not self.rag_preamble:
+        if self.number_thread_emails and not self.rag_preamble:
             raise ValueError("RAG preamble format must be provided if RAG is used.")
 
-        if use_thread and not self.thread_preamble:
+        if self.number_thread_emails and not self.thread_preamble:
             raise ValueError("Thread preamble format must be provided if thread is used.")
 
-        if use_rag:
+        if self.number_rag_emails > 0:
             relevant_emails = self.retriever.retrieve(
                 instruction.instruction, self.number_rag_emails, self.rag_relevance_threshold
             )
@@ -116,7 +114,7 @@ class EmailPromptBuilder(PromptBuilder):
         else:
             rag_prompt = ""
 
-        if use_thread:
+        if self.number_thread_emails > 0:
             thread_prompt = self._create_threading_preamble(
                 instruction.thread[: self.number_thread_emails]
             ).strip()

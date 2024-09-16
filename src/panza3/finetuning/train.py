@@ -1,12 +1,16 @@
 # Copyright 2022 MosaicML LLM Foundry authors
 # SPDX-License-Identifier: Apache-2.0
+
 import copy
 import gc
+import glob
 import logging
 import os
-import sys
+import shutil
+import tempfile
 import time
 import warnings
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 import torch
@@ -21,6 +25,7 @@ from composer.metrics.nlp import (InContextLearningCodeEvalAccuracy, InContextLe
 from composer.optim import DecoupledAdamW
 from composer.profiler import JSONTraceHandler, Profiler, TraceHandler, cyclic_schedule
 from composer.utils import dist, get_device, reproducibility
+from datasets import disable_caching
 from llmfoundry import ComposerHFCausalLM
 from llmfoundry.eval.metrics.nlp import InContextLearningMetric
 from llmfoundry.models.hf.model_wrapper import HuggingFaceModelWithFSDP
@@ -46,6 +51,11 @@ from llmfoundry.utils.builders import (add_metrics_to_eval_loaders, build_algori
 from llmfoundry.utils.config_utils import (log_config, pop_config, process_init_device,
                                            update_batch_size_info)
 from llmfoundry.utils.registry_utils import import_file
+
+import hydra
+from omegaconf import DictConfig, OmegaConf
+
+from panza3 import PanzaWriter  # The import also loads custom Hydra resolvers
 
 log = logging.getLogger(__name__)
 
@@ -124,6 +134,117 @@ def validate_config(cfg: DictConfig):
             )
 
 
+def create_run_name(cfg: DictConfig) -> str:
+    # export RUN_NAME=panza_${PANZA_USERNAME}_${MODEL_TYPE}_${MODEL_PRECISION}-bs${BS}-fft-lr${LR}-epochs${NUM_EPOCHS}-wu${WARMUP}-seed${SEED}${PREAMBLE_STR}${RAFT_STR}
+
+    run_name = f"panza_{cfg.user.username}"
+
+    model_name = cfg.finetuning.model_name_or_path.split("/")[-1]
+    run_name += f"-{model_name}"
+
+    run_name += f"-{cfg.model_precision}"
+    run_name += f"-bs{cfg.finetuning.batch_size}"
+
+    if hasattr(cfg.finetuning, "rosa"):
+        run_name += "-rosa"
+    else:
+        run_name += "-fft"
+
+    run_name += f"-lr{cfg.finetuning.lr}"
+    run_name += f"-{cfg.finetuning.max_duration}"
+    run_name += f"-seed{cfg.finetuning.seed}"
+
+    return run_name
+
+
+def override_rosa_schedule(cfg: DictConfig, mask_generation=False) -> None:
+    # Disable struct mode to allow modifications
+    rosa_cfg = cfg.finetuning.rosa
+    OmegaConf.set_struct(rosa_cfg, False)
+
+    mask_path = str(Path(cfg.checkpoint_dir) / "masks" / cfg.finetuning.run_name)
+
+    if mask_generation:
+        rosa_cfg.schedule = "wl16" if rosa_cfg.lora_r != 0 else "spa_only"
+        rosa_cfg.mask_load_path = None
+        rosa_cfg.mask_save_path = mask_path
+        rosa_cfg.terminate_after_mask_generation = True
+        rosa_cfg.mask_gen_model_precision = 'amp_bf16'
+    else:
+        if rosa_cfg.spa_d > 0 and rosa_cfg.lora_r != 0:
+            rosa_cfg.schedule = "default"
+        elif rosa_cfg.lora_r != 0:
+            rosa_cfg.schedule = "lora_only"
+            rosa_cfg.mask_load_path = None
+        else:
+            rosa_cfg.schedule = "spa_only"
+
+        rosa_cfg.mask_load_path = mask_path
+        rosa_cfg.mask_save_path = None
+        rosa_cfg.terminate_after_mask_generation = None
+
+    # Re-enable struct mode to lock down the configuration
+    OmegaConf.set_struct(rosa_cfg, True)
+
+
+def create_experiment_yaml() -> str:
+    pass
+
+
+def create_checkpoint_dirs(cfg: DictConfig) -> None:
+    # Create model directory
+    os.makedirs(os.path.join(cfg.checkpoint_dir, "models"), exist_ok=True)
+
+    # Create mask directory
+    if hasattr(cfg.finetuning, "rosa"):
+        os.makedirs(os.path.join(cfg.checkpoint_dir, "masks"), exist_ok=True)
+
+
+def get_hf_save_precision(cfg: DictConfig) -> str:
+    if cfg.model_precision == "bf16":
+        return "bfloat16"
+    elif cfg.model_precision == "fp32":
+        return "float32"
+    else:
+        raise ValueError(f"Unsupported model_precision: {cfg.model_precision}")
+
+
+def get_rosa_dtype(cfg: DictConfig) -> str:
+    if cfg.model_precision == "bf16":
+        return "bf16"
+    elif cfg.model_precision == "fp32":
+        return "fp32"
+    elif cfg.model_precision == "4bit":
+        return "fp32"
+    else:
+        raise ValueError(f"Unsupported model_precision: {cfg.model_precision}")
+
+
+def override_config(cfg: DictConfig) -> None:
+    # Disable struct mode to allow modifications
+    OmegaConf.set_struct(cfg, False)
+
+    if not cfg.finetuning.run_name:
+        cfg.finetuning.run_name = create_run_name(cfg)
+
+    if hasattr(cfg.finetuning, "rosa"):
+        cfg.finetuning.rosa.rosa_dtype = get_rosa_dtype(cfg)
+        if cfg.finetuning.rosa.spa_d != 0:
+            override_rosa_schedule(cfg, mask_generation=cfg.finetuning.rosa.masks_only)
+    else:
+        cfg.finetuning.callbacks.hf_checkpointer.precision = get_hf_save_precision(cfg)
+
+    # Re-enable struct mode to lock down the configuration
+    OmegaConf.set_struct(cfg, True)
+
+
+def save_config_to_yaml(cfg: DictConfig) -> str:
+    cfg = OmegaConf.to_container(cfg, resolve=True)
+    with tempfile.NamedTemporaryFile("w", delete=False, suffix=".yaml") as temp_file:
+        OmegaConf.save(config=cfg, f=temp_file.name)
+        return temp_file.name
+
+
 def build_composer_peft_model(
         model_config: str, rosa_config: Dict[str, Any],
         tokenizer: PreTrainedTokenizerBase, is_fsdp: bool = False) -> ComposerHFCausalLM:
@@ -184,6 +305,7 @@ def build_composer_peft_model(
             bias="none",
             task_type="CAUSAL_LM",
         )
+        #raise ValueError(config)
         print('Adding RoSA modules...')
         model = get_peft_model(model, config)
         print('RoSA modules added!')
@@ -214,7 +336,34 @@ def build_composer_peft_model(
     # model = ModelComposerHFCausalLM(model, tokenizer)
     return model
 
+@hydra.main(version_base="1.1", config_path="../../../configs", config_name="panza_finetuning")
 def main(cfg: DictConfig) -> Trainer:
+    override_config(cfg)
+
+    # Resolve all interpolation variables as early as possible
+    om.resolve(cfg)
+
+    # The preprocessing config is saved to a temporary directory
+    # and accessed through an environment variable. Note that this
+    # happens separately for each process (however, a collision should)
+    # not be a problem, since the configs are the same.
+    OmegaConf.set_struct(cfg, False)
+    cfg.preprocessing.model = cfg.finetuning.model_name_or_path
+    preprocessing_yaml = save_config_to_yaml(cfg.preprocessing)
+
+    #create_checkpoint_dirs(cfg)
+    environment = os.environ
+    # I don't think we need this, since panza is loaded with pip.
+    #environment["PYTHONPATH"] = os.path.join(cfg.panza_workspace, "src")
+    environment["WANDB_PROJECT"] = f"panza-{cfg.user.username}"
+    environment["WANDB_DISABLED"] = str(int(cfg.finetuning.wandb_disabled))
+    environment["PANZA_PREPROCESSING_CONFIG"] = preprocessing_yaml
+
+    cfg = cfg.finetuning
+
+    # Make the config editable for popping.
+    OmegaConf.set_struct(cfg, False)
+
     # Run user provided code if specified
     code_paths = pop_config(cfg,
                             'code_paths',
@@ -538,6 +687,7 @@ def main(cfg: DictConfig) -> Trainer:
     log.info('Building tokenizer...')
     tokenizer_name = tokenizer_config['name']
     tokenizer_kwargs = tokenizer_config.get('kwargs', {})
+    tokenizer_kwargs["num_proc"] = 1
     tokenizer = build_tokenizer(tokenizer_name, tokenizer_kwargs)
 
     # Scheduler
@@ -621,7 +771,6 @@ def main(cfg: DictConfig) -> Trainer:
     # Dataloaders
     log.info('Building train loader...')
     try:
-        from datasets import disable_caching
         disable_caching()
         train_loader = build_dataloader(
             train_loader_config,
@@ -734,6 +883,11 @@ def main(cfg: DictConfig) -> Trainer:
 
     # Build the Trainer
     log.info('Building trainer...')
+    dtypes = {x.dtype for x in model.parameters()}
+    print(dtypes)
+    #raise ValueError(dtypes)
+    #raise ValueError(model.dtype)
+    #raise ValueError([save_folder, save_overwrite, save_filename, save_latest_filename, save_interval, save_overwrite])
     trainer = Trainer(
         run_name=run_name,
         seed=seed,
@@ -787,6 +941,16 @@ def main(cfg: DictConfig) -> Trainer:
     log.info('Starting training...')
     trainer.fit()
 
+    # Hacky solution for moving the model checkpoint from the
+    # subdirectory that the HF writer wrote it into, and into
+    # our desired and expected location.
+    if torch.distributed.get_rank() == 0:
+        path_to_save = os.path.join(hf_save_path, run_name)
+        hf_output_path = os.path.join(path_to_save, "huggingface")
+        for filename in glob.glob(os.path.join(hf_output_path, "*", "*")):
+            shutil.copy(filename, path_to_save)
+        shutil.rmtree(os.path.join(hf_output_path))
+
     # if rosa is enabled, save the model manually, since
     # llm-foundry's checkpointing doesn't work properly with RoSA
     if rosa_config is not None:
@@ -821,18 +985,5 @@ def main(cfg: DictConfig) -> Trainer:
     log.info('Done.')
     return trainer
 
-
 if __name__ == '__main__':
-    yaml_path, args_list = sys.argv[1], sys.argv[2:]
-
-    # Disable resolving environment variables through omegaconf.
-    om.clear_resolver('oc.env')
-
-    # Load yaml and cli arguments.
-    with open(yaml_path) as f:
-        yaml_cfg = om.load(f)
-    cli_cfg = om.from_cli(args_list)
-    cfg = om.merge(yaml_cfg, cli_cfg)
-    om.resolve(cfg)
-    assert isinstance(cfg, DictConfig)
-    main(cfg)
+    main()

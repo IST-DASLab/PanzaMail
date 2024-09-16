@@ -1,16 +1,15 @@
+wandb_disabled: false
+
 max_seq_len: 512
 global_seed: ${seed}
-model_name_or_path: ${model}
 
 load_path:  # set via bash script to be absolute path to your sparse checkpoint
 precision: amp_bf16
 hf_save_path: ${checkpoint_dir}/models
 
-max_duration: ${num_epochs}ep
 eval_interval: 1
-seed: ${seed}
 
-global_train_batch_size: ${batch_size}
+global_train_batch_size: 8
 device_train_microbatch_size: 1
 device_eval_batch_size: 1
 
@@ -56,7 +55,7 @@ scheduler:
 
 optimizer:
   name: decoupled_adamw
-  lr: ${lr}
+  lr: 1e-5
   betas:
     - 0.9
     - 0.999
