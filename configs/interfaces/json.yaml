@@ -1,0 +1,9 @@
+input_file: /nfs/scistore19/alistgrp/eiofinov/PanzaMail/data/test_small.jsonl
+batch_size: 8
+use_thread: false
+responses_per_prompt: 1
+checkpoint: ${checkpoint}
+panza_workspace: ${panza_workspace}
+compute_metrics: true
+user: ${user.username}
+_target_: panza3.interface.PanzaJSON
