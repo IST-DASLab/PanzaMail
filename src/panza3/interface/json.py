@@ -40,29 +40,46 @@ def compute_mauve_score(predictions, goldens):
 
 class PanzaJSON:
 
-    def compose_output_folder(self, checkpoint, panza_workspace):
+    def compose_output_folder(self, json_path, checkpoint, panza_workspace, username):
         if os.path.isdir(checkpoint):
+            # Presumably this is a Panza-trained model; go ahead
+            # and put the json output into the same folder.
             output_dir = checkpoint
-        else:  # Assume that this is a huggingface model
-            output_dir = os.path.join(panza_workspace, "checkpoints", "models", checkpoint)
+        else:  
+            # Assume that this is a huggingface model identified by its hf handle.
+            # We don't want to populate the cached model folder, so instead
+            # we create a folder in the Panza workspace to put the output.
+            output_dir = os.path.join(panza_workspace, "checkpoints", "models", checkpoint, username)
             os.makedirs(output_dir, exist_ok=True)
-        return os.path.join(output_dir, "panza_outputs.json")
+        filename_no_ext = os.path.splitext(os.path.basename(json_path))[0]
+        return os.path.join(output_dir, f"{filename_no_ext}_outputs.json")
 
 
     def assemble_responses(self, prompts_json, batch_size, use_thread,
-                         responses_per_prompt, compute_metrics):
+                         responses_per_prompt):
 
         with open (prompts_json, "r") as f:
             golden_lines = [json.loads(l) for l in f.readlines()]
 
+        # Group json lines together by prompt to avoid weirdness in
+        # eval metric computation. In case golden responses are provided,
+        # all goldens are used as alternatives for BLEU and ROUGE scores;
+        # the first one provided is used for MAUVE.
         grouped_golden = {}
+        has_goldens = False
         for entry in golden_lines:
+            # 'summary' is the name of the 'prompt' field, i.e., the one to group on.
             if entry["summary"] in grouped_golden:
-                grouped_golden[entry["summary"]]["templates"].append(entry["email"])
+                if 'email' in entry:
+                    has_goldens = True
+                    grouped_golden[entry["summary"]]["goldens"].append(entry["email"])
             else:
                 grouped_golden[entry["summary"]] = {}
-                grouped_golden[entry["summary"]]["templates"] = [(entry["email"])]
+                if 'email' in entry:
+                    has_goldens = True
+                    grouped_golden[entry["summary"]]["goldens"] = [(entry["email"])]
             grouped_golden[entry["summary"]]["thread"] = entry["thread"]
+        # Convert dict to list of (k, v) pairs to batch through it.
         grouped_golden = list(grouped_golden.items())
 
         all_responses = []
@@ -71,13 +88,13 @@ class PanzaJSON:
             prompts = [item[0] for item in batch]
             if use_thread:
                 threads = [item[1]["thread"] for item in batch]
-            golden_responses = [item[1]["templates"] for item in batch]
+            golden_responses = [item[1]["goldens"] for item in batch]
 
             responses = [{"prompt": p,
-                              "full_prompt": "",
-                              "thread": None if not use_thread else threads[i],
-                              "golden_responses": golden_responses[i],
-                              "panza_responses": []} for i, p in enumerate(prompts)]
+                          "full_prompt": None,
+                          "thread": None if not use_thread else threads[i],
+                          "golden_responses": golden_responses[i],
+                          "panza_responses": []} for i, p in enumerate(prompts)]
             for _ in range(responses_per_prompt):
                 if use_thread:
                     instructions = list(zip(prompts, threads))
@@ -85,6 +102,7 @@ class PanzaJSON:
                     instructions = list(zip(prompts, [None]*len(prompts)))
 
                 outputs, full_prompts = self.writer.run_batch([EmailInstruction(user_input) for user_input in instructions], return_prompt=True)
+
                 # Remove some boilerplate added by instruction-tuned models w/out finetuning.
                 outputs = [o.replace("Here is the email:\n", "") for o in outputs]
                 outputs = [re.sub(r'SUBJECT:.*\n', "", o) for o in outputs]
@@ -95,26 +113,29 @@ class PanzaJSON:
                     r["full_prompt"] = full_prompts[i]
                     r["panza_responses"].append(outputs[i])
                 all_responses += responses
+        return all_responses, has_goldens
 
-        if compute_metrics:
-            for response in all_responses:
-                response["scores"] = {}
-                response["scores"]["ROUGE"] = compute_rouge_scores(
-                    response["panza_responses"],
-                    response["golden_responses"])
-                response["scores"]["BLEU"] = compute_bleu_scores(
-                    response["panza_responses"],
-                    response["golden_responses"])
-            rouge_categories = all_responses[0]["scores"]["ROUGE"][0].keys()
-            aggregate_metrics = {
-                "BLEU": np.mean([s for r in all_responses for s in r["scores"]["BLEU"]]),
-                "ROUGE": {cat: 
-                          np.mean([
-                              s[cat] for r in all_responses for s in r["scores"]["ROUGE"]])
-                          for cat in rouge_categories},
-                "MAUVE": compute_mauve_score([r["panza_responses"] for r in all_responses],
-                                             [r["golden_responses"] for r in all_responses]).mauve
-            }
+    def do_compute_metrics(self, all_responses):
+        for response in all_responses:
+            response["scores"] = {}
+            response["scores"]["BLEU"] = compute_bleu_scores(
+                response["panza_responses"],
+                response["golden_responses"])
+            response["scores"]["ROUGE"] = compute_rouge_scores(
+                response["panza_responses"],
+                response["golden_responses"])
+        rouge_categories = all_responses[0]["scores"]["ROUGE"][0].keys()
+        aggregate_metrics = {
+            "BLEU": np.mean([s for r in all_responses for s in r["scores"]["BLEU"]]),
+            "ROUGE": {cat: 
+                        np.mean([
+                            s[cat] for r in all_responses for s in r["scores"]["ROUGE"]])
+                        for cat in rouge_categories},
+            "MAUVE": compute_mauve_score([r["panza_responses"] for r in all_responses],
+                                            [r["golden_responses"] for r in all_responses]).mauve
+        }
+        print("########## Aggregated quality metrics ##########\n")
+        print(json.dumps(aggregate_metrics, indent=2))
         return {"responses": all_responses, "aggregate_metrics": aggregate_metrics}
 
 
@@ -126,11 +147,18 @@ class PanzaJSON:
                  use_thread: bool, 
                  responses_per_prompt: int, 
                  compute_metrics: bool,
-                 user: str):
+                 username: str):
         self.writer = writer
-        responses = self.assemble_responses(input_file, batch_size,
-                                           use_thread, responses_per_prompt,
-                                           compute_metrics)
-        output_path = self.compose_output_folder(checkpoint, panza_workspace)
+        responses, has_goldens = self.assemble_responses(input_file, batch_size,
+                                           use_thread, responses_per_prompt)
+        if compute_metrics:
+            if has_goldens:
+                responses = self.do_compute_metrics(responses)
+            else:
+                print("Warning: metrics requested but no golden labels given!",
+                      "\nDumping responses without computing metrics.")
+
+        output_path = self.compose_output_folder(
+            input_file, checkpoint, panza_workspace, username)
         with open(output_path, 'w') as f:
             json.dump(responses, f, indent=4, sort_keys=True)
