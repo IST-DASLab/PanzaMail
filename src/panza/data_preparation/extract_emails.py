@@ -142,7 +142,11 @@ def main():
         print(f"--> processing {i}/{n_emails} <--")
         # Filter messages sent from your email address
         if message["from"] and any(email in message["from"] for email in EMAIL):
-            date = parsedate_to_datetime(message["Date"]).isoformat()
+            if message["Date"]:
+                date = parsedate_to_datetime(message["Date"]).isoformat()
+            else:
+                print("Date was not found in the email. Skipping.")
+                continue 
             if message.is_multipart():
                 for part in message.walk():
                     filtered_msg = filter_message(part)
