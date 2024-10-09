@@ -74,16 +74,15 @@ def filter_relevant_emails(relevant_emails_with_score: List[Tuple[Email, float]]
     # Random chance to not include any relevant emails
     p = random.random()
     if p > RAG_PROB:
-        relevant_emails = []
         print("Skip RAG")
-        return relevant_emails
+        return []
 
-    if not relevant_emails:
+    if not relevant_emails_with_score:
         print("Relevant emails not found.")
         return []
 
     print("Don't skip")
-    relevant_emails = [r["email"] for r in relevant_emails if r["score"] >= RAG_RELEVANCE_THRESHOLD]
+    relevant_emails = [r["email"] for r in relevant_emails_with_score if r["score"] >= RAG_RELEVANCE_THRESHOLD]
     relevant_emails = [Document(page_content=email, metadata={}) for email in relevant_emails]
     relevant_emails = relevant_emails[:RAG_NUM_EMAILS]
     print(f"Found {len(relevant_emails)} relevant emails.")
