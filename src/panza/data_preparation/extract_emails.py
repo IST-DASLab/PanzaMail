@@ -147,7 +147,6 @@ def main():
             else:
                 print("Date was not found in the email. Skipping.")
                 continue 
-            date = parsedate_to_datetime(message["Date"]).isoformat()
             if message.is_multipart():
                 for part in message.walk():
                     filtered_msg = filter_message(part)
