@@ -30,6 +30,7 @@ def run_batch_inference(prompts, model, tokenizer, batch_size, system_preamble, 
                         rag_relevance_threshold, rag_num_emails, use_rag, db, max_new_tokens, best, temperature, top_k, top_p, device):
     all_outputs = []
     for i in range(0, len(prompts), batch_size):
+        print(i)
         batch = prompts[i:i+batch_size]
         instructions = list(zip(batch, [None]*len(batch)))
         _, outputs = base_inference.run_inference(
@@ -55,7 +56,7 @@ def run_batch_inference(prompts, model, tokenizer, batch_size, system_preamble, 
         outputs = [re.sub(r'SUBJECT:.*\n', "", o) for o in outputs]
         outputs = [re.sub(r'Subject:.*\n', "", o) for o in outputs]
         outputs = [re.sub(r'E-MAIL CONTENT:.*\n', "", o) for o in outputs]
-        all_outputs.append(outputs)
+        all_outputs += outputs
     return all_outputs
 
 
@@ -149,7 +150,7 @@ def main():
 
     results = run_batch_inference(prompts, model, tokenizer, args.batch_size, system_preamble, user_preamble, rag_preamble,
                         args.rag_relevance_threshold, args.rag_num_emails, args.use_rag, db, args.max_new_tokens,
-                        args.best, args.temperature, args.top_k, args.top_p, args.device)[0]
+                        args.best, args.temperature, args.top_k, args.top_p, args.device)
     
     reformatted = ["Prompt,Email,Score"] + [f"{x},{y}," for x, y in zip(prompts, results)]
     data = [{"prompt": p, "email": r, "rating": None} for p, r in zip(prompts, results)]
