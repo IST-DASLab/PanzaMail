@@ -29,7 +29,7 @@ fi
 
 EVAL_SCRIPT=${PANZA_WORKSPACE}/src/panza/evaluation/generate_questions.py
 
-OUT_FOLDER=${PANZA_WORKPLACE}/human_eval
+OUT_FOLDER=${PANZA_WORKSPACE}/human_eval
 mkdir -p ${OUT_FOLDER}
 
 python ${EVAL_SCRIPT} \
