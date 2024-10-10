@@ -13,8 +13,10 @@ import os
 import re
 import string
 import sys
+import json
 
 import numpy as np
+np.random.seed(0) # Fix the seed so we always get the same prompts
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
@@ -23,8 +25,6 @@ from panza.utils import prompting, rag
 
 sys.path.pop(0)
 
-
-prompts_file = "fixed_prompts.txt"
 
 def run_batch_inference(prompts, model, tokenizer, batch_size, system_preamble, user_preamble, rag_preamble,
                         rag_relevance_threshold, rag_num_emails, use_rag, db, max_new_tokens, best, temperature, top_k, top_p, device):
@@ -128,12 +128,20 @@ def main():
     parser = base_inference.get_base_inference_args_parser()
     parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--out-path")
-    parser.add_argument("--prompts-file")
+    parser.add_argument("--prompts-file", default=None)
+    parser.add_argument("--test-data-file", default=None)
     args = parser.parse_args()
 
-    with open(args.prompts_file, 'r') as f:
-        prompts = [x.strip() for x in f.readlines()]
-        # Remove some boilerplate added by instruction-tuned models w/out finetuning.
+    if args.prompts_file is not None:
+        with open(args.prompts_file, 'r') as f:
+            prompts = [x.strip() for x in f.readlines()]
+            eval_style = "fixed_prompt"
+    elif args.test_data_file is not None:
+        with open(args.test_data_file, 'r') as f:
+            prompts = np.random.choice([json.loads(x)["summary"] for x in f.readlines()], 16)
+            eval_style = "own_prompt"
+    else:
+        raise ValueError("no prompts file given!")
 
     print("Loading model ", args.model)
     model, tokenizer = base_inference.load_model_and_tokenizer(args.model, args.device, args.dtype, load_in_4bit=args.load_in_4bit)
@@ -152,9 +160,9 @@ def main():
                         args.rag_relevance_threshold, args.rag_num_emails, args.use_rag, db, args.max_new_tokens,
                         args.best, args.temperature, args.top_k, args.top_p, args.device)
     
-    reformatted = ["Prompt,Email,Score"] + [f"{x},{y}," for x, y in zip(prompts, results)]
     data = [{"prompt": p, "email": r, "rating": None} for p, r in zip(prompts, results)]
-    with open(os.path.join(args.out_path, f"{os.path.basename(args.model)}_fixed_prompt_eval.csv"), 'w', newline="") as f:
+    print(len(data))
+    with open(os.path.join(args.out_path, f"{os.path.basename(args.model)}_{eval_style}_eval.csv"), 'w', newline="") as f:
         fieldnames = ['prompt', 'email', 'rating']
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
