@@ -1,0 +1,16 @@
+Write an email to tell my two good friends Ina and George that I won't be able to make it to dinner on friday. Make sure to add an apology and say I hope to see them soon.
+Write an email inviting a large group of people to dinner at my house. Tell them I'm excited to try out my new recipe for roasted fish.
+Write an email to Ziqui Chen telling her that I am still interested in buying the microwave from her, and I could pick it up next Thursday or Friday.
+Write an email to a travel agency, telling them that you and your parents would prefer Australia over Myanmar, and would like to have modern accomodations with good showers.
+Write an email to my good friend Alice asking her if she has any recommendations for what to do in Peru, when I travel there next summer.
+Write an email to my former coworker, apoligizing for the late response and telling her that I'd be happy to grab lunch or coffee when she comes to Vienna for ICLR.
+Write an email to James Chen to thank him for his interest in the group, but telling him that it's not clear if any interns can be hired this year.
+Write an email to Anna Karina to tell her that you'd be happy to answer any questions she has about the group, but you will likely be slow to reply for the next few weeks, due to upcoming conference submission deadlines.
+Write an email to the immigration authorities to tell them that I urgently need an appointment to replace my lost residence permit, but unfortunately it seems that there is no availability on their website for the last month.
+Write an email to the university administration to complain that the shuttle bus has been over 10 minutes late every day for the last couple of weeks.
+Write an email to former group member Alex, telling him that we can't find his laptop and asking where he left it.
+Write an email to Katie showing her how to write a bash script that iterates over a directory and appends a string to every file.
+Write an email to my friend Albert with a recipe for banana bread.
+Write an email to my trainee Eric explaining the review process at NeurIPS and how to be a good reviewer.
+Write an email to Peter to tell him my new address.
+Write an email to Leandra to ask her to call me this evening at my phone number. 
