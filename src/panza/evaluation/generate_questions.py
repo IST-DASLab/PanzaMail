@@ -138,7 +138,7 @@ def main():
             eval_style = "fixed_prompt"
     elif args.test_data_file is not None:
         with open(args.test_data_file, 'r') as f:
-            prompts = np.random.choice([json.loads(x)["summary"] for x in f.readlines()], 16)
+            prompts = np.random.choice([json.loads(x)["summary"] for x in f.readlines()], 16, replace=False)
             eval_style = "own_prompt"
     else:
         raise ValueError("no prompts file given!")
