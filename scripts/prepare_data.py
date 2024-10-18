@@ -141,9 +141,9 @@ def main(cfg: DictConfig) -> None:
     documents = load_documents(cfg.data_path)
     # TODO: Add custom resolver for output path and add it in config
     output_path = cfg.data_path.rsplit(".jsonl", 1)[0] + "_summarized.jsonl"
-    # generate_synthetic_instructions(
-    #     documents=documents, writer=writer, batch_size=cfg.batch_size, output_path=output_path
-    # )
+    generate_synthetic_instructions(
+        documents=documents, writer=writer, batch_size=cfg.batch_size, output_path=output_path
+    )
 
     # Write the test data to test.jsonl, with an optional train-test split
     split_and_write_data(cfg)
