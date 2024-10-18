@@ -12,5 +12,4 @@ class PanzaCLI:
             else:
                 instruction: Instruction = EmailInstruction(user_input)
                 stream = self.writer.run(instruction, stream=True)
-                for chunk in stream:
-                    print(chunk, end="")
+                stream.end()

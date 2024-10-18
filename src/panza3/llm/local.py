@@ -105,7 +105,7 @@ class LocalLLM(LLM):
         model_inputs = encodeds.to(self.device)
 
         self.model.generate(
-            model_inputs,
+            **model_inputs,
             streamer=streamer,
             **self.sampling_parameters,
             pad_token_id=self.tokenizer.pad_token_id,

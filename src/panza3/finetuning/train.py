@@ -943,8 +943,9 @@ def main(cfg: DictConfig) -> Trainer:
 
     # Hacky solution for moving the model checkpoint from the
     # subdirectory that the HF writer wrote it into, and into
-    # our desired and expected location.
-    if torch.distributed.get_rank() == 0:
+    # our desired and expected location. Only needed for full
+    # (not low-rank) finetuning.
+    if rosa_config is None and torch.distributed.get_rank() == 0:
         path_to_save = os.path.join(hf_save_path, run_name)
         hf_output_path = os.path.join(path_to_save, "huggingface")
         for filename in glob.glob(os.path.join(hf_output_path, "*", "*")):
