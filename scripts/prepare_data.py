@@ -1,6 +1,9 @@
+import datetime
 import json
 import logging
 import os
+import random
+import shutil
 import sys
 import time
 from typing import List
@@ -85,6 +88,35 @@ def check_if_file_exists(cfg: DictConfig) -> None:
         sys.exit(0)
 
 
+def split_and_write_data(cfg):
+    data_dir = os.path.dirname(cfg.data_path)
+    if cfg.test_split == 0:
+        shutil.copy(cfg.data_path, os.path.join(data_dir, "train.jsonl"))
+        # Bad hack - we need test data for the training to work.
+        shutil.copy(cfg.data_path, os.path.join(data_dir, "test.jsonl"))
+    else:
+        with open(cfg.data_path, "r") as f:
+            data = f.readlines()
+        if cfg.split_type == "random":
+            random.seed(cfg.seed)
+            random.shuffle(data)
+        elif cfg.split_type == "chronological":
+            data = sorted(data, key=lambda x: datetime.fromisoformat(json.loads(x)["date"]))
+        else:
+            raise ValueError("Invalid split type.")
+
+        train_size = int(len(data) * 1-cfg.test_split)
+
+        with open(os.path.join(data_dir, "train.jsonl"), "w") as f:
+            for i in range(train_size):
+                f.write(data[i])
+
+        with open(os.path.join(data_dir, "test.jsonl"), "w") as f:
+            for i in range(train_size, len(data)):
+                f.write(data[i])
+
+
+
 @hydra.main(version_base="1.1", config_path="../configs", config_name="panza_preparation")
 def main(cfg: DictConfig) -> None:
     LOGGER.info("Running Panza Data Preparation")
@@ -109,9 +141,12 @@ def main(cfg: DictConfig) -> None:
     documents = load_documents(cfg.data_path)
     # TODO: Add custom resolver for output path and add it in config
     output_path = cfg.data_path.rsplit(".jsonl", 1)[0] + "_summarized.jsonl"
-    generate_synthetic_instructions(
-        documents=documents, writer=writer, batch_size=cfg.batch_size, output_path=output_path
-    )
+    # generate_synthetic_instructions(
+    #     documents=documents, writer=writer, batch_size=cfg.batch_size, output_path=output_path
+    # )
+
+    # Write the test data to test.jsonl, with an optional train-test split
+    split_and_write_data(cfg)
 
     create_vector_store(output_path, cfg.rag_embedding_chunk_size, cfg.rag_embedding_chunk_overlap, os.path.dirname(cfg.data_path), cfg.user.username, cfg.rag_embedding_model)
 
