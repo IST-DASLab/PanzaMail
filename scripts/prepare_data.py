@@ -88,14 +88,14 @@ def check_if_file_exists(cfg: DictConfig) -> None:
         sys.exit(0)
 
 
-def split_and_write_data(cfg):
+def split_and_write_data(summarized_data_path,cfg):
     data_dir = os.path.dirname(cfg.data_path)
     if cfg.test_split == 0:
-        shutil.copy(cfg.data_path, os.path.join(data_dir, "train.jsonl"))
+        shutil.copy(summarized_data_path, os.path.join(data_dir, "train.jsonl"))
         # Bad hack - we need test data for the training to work.
-        shutil.copy(cfg.data_path, os.path.join(data_dir, "test.jsonl"))
+        shutil.copy(summarized_data_path, os.path.join(data_dir, "test.jsonl"))
     else:
-        with open(cfg.data_path, "r") as f:
+        with open(summarized_data_path, "r") as f:
             data = f.readlines()
         if cfg.split_type == "random":
             random.seed(cfg.seed)
@@ -146,7 +146,7 @@ def main(cfg: DictConfig) -> None:
     )
 
     # Write the test data to test.jsonl, with an optional train-test split
-    split_and_write_data(cfg)
+    split_and_write_data(output_path, cfg)
 
     create_vector_store(output_path, cfg.rag_embedding_chunk_size, cfg.rag_embedding_chunk_overlap, os.path.dirname(cfg.data_path), cfg.user.username, cfg.rag_embedding_model)
 
