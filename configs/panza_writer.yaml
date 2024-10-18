@@ -2,8 +2,11 @@ defaults:
   - base
   - writer: email
   - interfaces:
-      - gui
+      # - gui
       # - cli
       # - web
+      - json
 
-checkpoint: '/nfs/scistore19/alistgrp/eiofinov/PanzaMail/data/jen_model'
+# Either a full path to the checkpoint, or the 'latest' tag,
+# Which looks for the latest checkpoint in `checkpoint_dir`
+checkpoint: 'latest'
