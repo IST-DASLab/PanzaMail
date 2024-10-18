@@ -1,6 +1,5 @@
 defaults:
   - base
-  - user: armand
   - writer: summary
   - writer/prompting/retriever/faiss@retriever
 
@@ -8,3 +7,6 @@ batch_size: 8
 data_path: ${user.data_dir}/${user.username}_clean.jsonl
 checkpoint: "microsoft/Phi-3-mini-4k-instruct"
 force: false
+rag_embedding_chunk_size: 3000
+rag_embedding_chunk_overlap: 3000
+rag_embedding_model: "sentence-transformers/all-mpnet-base-v2"

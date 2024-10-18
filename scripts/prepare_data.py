@@ -12,6 +12,7 @@ from tqdm import tqdm
 from panza3 import PanzaWriter  # The import also loads custom Hydra resolvers
 from panza3.entities import Document, Email, SummarizationInstruction
 from panza3.retriever import DocumentRetriever
+from panza3.data_preparation.rag import create_vector_store
 
 LOGGER = logging.getLogger(__name__)
 
@@ -104,7 +105,7 @@ def main(cfg: DictConfig) -> None:
     assert isinstance(retriever, DocumentRetriever), "Failed to instantiate DocumentRetriever"
     retriever.set_document_class(Email)
 
-    # Load documentas
+    # Load documents
     documents = load_documents(cfg.data_path)
     # TODO: Add custom resolver for output path and add it in config
     output_path = cfg.data_path.rsplit(".jsonl", 1)[0] + "_summarized.jsonl"
@@ -112,7 +113,7 @@ def main(cfg: DictConfig) -> None:
         documents=documents, writer=writer, batch_size=cfg.batch_size, output_path=output_path
     )
 
-    # TODO: Create vector store
+    create_vector_store(output_path, cfg.rag_embedding_chunk_size, cfg.rag_embedding_chunk_overlap, os.path.dirname(cfg.data_path), cfg.user.username, cfg.rag_embedding_model)
 
 
 if __name__ == "__main__":
