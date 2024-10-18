@@ -5,6 +5,7 @@ import json
 import numpy as np
 import os
 import re
+from tqdm import tqdm
 
 
 from evaluate import load
@@ -18,6 +19,7 @@ bleu2 = BLEUScore(n_gram=2)
 bleu3 = BLEUScore(n_gram=3)
 bleu4 = BLEUScore(n_gram=4)
 mauve = load('mauve')
+from tqdm import tqdm
 
 def compute_rouge_scores(predictions, goldens):
     goldens= [" ".join(x.translate(punc_table).lower().split()) for x in goldens]
@@ -83,7 +85,7 @@ class PanzaJSON:
         grouped_golden = list(grouped_golden.items())
 
         all_responses = []
-        for i in range(0, len(grouped_golden), batch_size):
+        for i in tqdm(range(0, len(grouped_golden), batch_size)):
             batch = grouped_golden[i:i + batch_size]
             prompts = [item[0] for item in batch]
             if use_thread:
