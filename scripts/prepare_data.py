@@ -15,6 +15,7 @@ from tqdm import tqdm
 from panza3 import PanzaWriter  # The import also loads custom Hydra resolvers
 from panza3.entities import Document, Email, SummarizationInstruction
 from panza3.retriever import DocumentRetriever
+from panza3.data_preparation.extract_emails import extract_emails
 from panza3.data_preparation.rag import create_vector_store
 
 LOGGER = logging.getLogger(__name__)
@@ -79,8 +80,7 @@ def generate_synthetic_instructions(
 
 
 def check_if_file_exists(cfg: DictConfig) -> None:
-    output_path = cfg.data_path.rsplit(".jsonl", 1)[0] + "_summarized.jsonl"
-    if os.path.exists(output_path) and not cfg.force:
+    if os.path.exists(cfg.cleaned_emails_path) and not cfg.force:
         LOGGER.warning(
             "Summaries already exists, program will close. "
             "If you want to regenerate use the flag force=true."
@@ -88,14 +88,13 @@ def check_if_file_exists(cfg: DictConfig) -> None:
         sys.exit(0)
 
 
-def split_and_write_data(summarized_data_path,cfg):
-    data_dir = os.path.dirname(cfg.data_path)
+def split_and_write_data(cfg):
     if cfg.test_split == 0:
-        shutil.copy(summarized_data_path, os.path.join(data_dir, "train.jsonl"))
+        shutil.copy(cfg.summarized_emails_path, os.path.join(cfg.user.data_dir, "train.jsonl"))
         # Bad hack - we need test data for the training to work.
-        shutil.copy(summarized_data_path, os.path.join(data_dir, "test.jsonl"))
+        shutil.copy(cfg.summarized_emails_path, os.path.join(cfg.user.data_dir, "test.jsonl"))
     else:
-        with open(summarized_data_path, "r") as f:
+        with open(cfg.summarized_emails_path, "r") as f:
             data = f.readlines()
         if cfg.split_type == "random":
             random.seed(cfg.seed)
@@ -107,11 +106,11 @@ def split_and_write_data(summarized_data_path,cfg):
 
         train_size = int(len(data) * 1-cfg.test_split)
 
-        with open(os.path.join(data_dir, "train.jsonl"), "w") as f:
+        with open(os.path.join(cfg.user.data_dir, "train.jsonl"), "w") as f:
             for i in range(train_size):
                 f.write(data[i])
 
-        with open(os.path.join(data_dir, "test.jsonl"), "w") as f:
+        with open(os.path.join(cfg.user.data_dir, "test.jsonl"), "w") as f:
             for i in range(train_size, len(data)):
                 f.write(data[i])
 
@@ -122,11 +121,16 @@ def main(cfg: DictConfig) -> None:
     LOGGER.info("Running Panza Data Preparation")
     LOGGER.info("Configuration: \n%s", OmegaConf.to_yaml(cfg, resolve=True))
 
+
     # Skip running if summaries already exist
     check_if_file_exists(cfg)
 
     # Rename config keys to follow class structure
     rename_config_keys(cfg)
+
+    # Extract the emails from the .mbox file
+    extract_emails(cfg.email_dump_path, cfg.cleaned_emails_path, [cfg.user.email_address], cfg.discarded_emails_dir)
+    # Filter emails?
 
     # Instantiate Panza writer
     writer: PanzaWriter = hydra.utils.instantiate(cfg.writer)
@@ -138,17 +142,16 @@ def main(cfg: DictConfig) -> None:
     retriever.set_document_class(Email)
 
     # Load documents
-    documents = load_documents(cfg.data_path)
-    # TODO: Add custom resolver for output path and add it in config
-    output_path = cfg.data_path.rsplit(".jsonl", 1)[0] + "_summarized.jsonl"
+    documents = load_documents(cfg.cleaned_emails_path)
     generate_synthetic_instructions(
-        documents=documents, writer=writer, batch_size=cfg.batch_size, output_path=output_path
+        documents=documents, writer=writer, batch_size=cfg.batch_size, output_path=cfg.summarized_emails_path
     )
 
     # Write the test data to test.jsonl, with an optional train-test split
-    split_and_write_data(output_path, cfg)
+    split_and_write_data(cfg)
 
-    create_vector_store(output_path, cfg.rag_embedding_chunk_size, cfg.rag_embedding_chunk_overlap, os.path.dirname(cfg.data_path), cfg.user.username, cfg.rag_embedding_model)
+    # Use only the training data (which might be all the data) for RAG.
+    create_vector_store(os.path.join(cfg.user.data_dir, "train.jsonl"), cfg.rag_embedding_chunk_size, cfg.rag_embedding_chunk_overlap, cfg.rag_db_dir, cfg.user.username, cfg.rag_embedding_model)
 
 
 if __name__ == "__main__":
