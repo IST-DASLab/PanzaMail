@@ -64,16 +64,16 @@ The overall structure of Panza is as follows:
 1. Make sure you have a version of [conda](https://docs.anaconda.com/free/miniconda/miniconda-install/) installed.
 2. Create a new conda environment named 'panza' (or something else) and activate it:
 ``` bash
-conda create -n panza python=3.10
+conda create -n panza python=3.10 -y
 conda activate panza
 ```
 3. Install the required packages:
 ``` bash
-pip install panza_mail
+pip install .
 ```
 4. If you want to also finetune models using Panza, you will need to install the additional packages:
 ``` bash
-pip install panza_mail[training]
+pip install .[training]
 ```
 
 ## TODO: :rocket: Getting started
@@ -109,16 +109,26 @@ At the end of this step you should have the downloaded emails placed inside `dat
 ### Step 1: Environment configuration
 
 <!-- 🎛️ -->
-Panza is configured through a set of environment variables defined in `scripts/config.sh` and shared along all running scripts.
+Panza is configured through a set of yaml configurations defined in `configs/`. There is a single high-level config under `configs/base.yaml`, and the rest are organized unders the main functionalities of the code.
+Note that these task-specific configs can, in some cases, be used to overrride base configs.
+ Specific use cases, such as hyperparameter tuning, are covered in more detail in `scripts/README.md`. (TODO jen: write this up.)
+
+1. Data preparation: `configs/data_preparation.yaml`. Additionally, a custom user config must be added under `config/users/` (see below).
+1. Finetuning: the main config is in `configs/panza_finetuning.yaml` and the method-specific ones are in `configs/finetuning/`
+1. Serving: Serving consists of two parts - a serving infrastructre (that we call 'writer') that runs the LLM and so converts prompts to Panza outputs, and an `interface`, which presents the outputs in a useful form - through a command-line interface, a web interface, a gmail client (TODO:Sean), or in a bulk `.json` format (useful for evaluation). The configs for serving are in `panza_writer.yaml`, and for the interfaces, under `configs/interfaces`.
 
 <!-- 💬 -->
-The LLM prompt is controlled by a set of `prompt_preambles` that give the model more insight about its role, the user and how to reuse existing emails for *Retrieval-Augmented Generation (RAG)*. See more details in the [prompting section](prompt_preambles/README.md).
-
+These scripts are described in more detail in `scripts/README.md`, but a few customizations need to happen immediately.
 :warning: Before continuing, make sure you complete the following setup:
-  - Modifiy the environment variable `PANZA_EMAIL_ADDRESS` inside `scripts/config.sh` with your own email address.
-  - Modifiy `prompt_preambles/user_preamble.txt` with your own information. If you choose, this can even be empty.
+- Optionally, copy `users/default.yaml` to `users/[YOURNAME].yaml`. If this is skipped, perform the following modifications on `users/default.yaml` directly.
+- In the user config, set the email address and username. The email address should be the sender address in the exported emails. (Panza uses this to edit out responses and other emails sent by a different author in the `.mbox` dump.)
+- Modify the personal prompt in `prompt_preambles/user_preamble.txt` to include some basic information about yourself that Panza can use to customize your emails with your correct full name, address, phone number, etc.
+  
+
+Additionally, please perform the following login steps to be able to download the base model. 
   - Login to Hugging Face to be able to download pretrained models: `huggingface-cli login`.
-  - [Optional] Login to Weights & Biases to log metrics during training: `wandb login`. Then, set `PANZA_WANDB_DISABLED=False` in `scripts/config.sh`.
+  - [Optional] Login to Weights & Biases to log metrics during training: `wandb login`. Then, set `wandb_disabled=false` in `configs/finetuning/base.yaml`.
+
 
 You are now ready to move to `scripts`.
 ``` bash
@@ -128,54 +138,40 @@ cd scripts
 ### Step 2: Extract emails
 <!-- **Step 2: Extract emails** -->
 
-1. Run `./extract_emails.sh`. This extracts your emails in text format to `data/<username>_clean.jsonl` which you can manually inspect.
-
-2. If you wish to eliminate any emails from the training set (e.g. containing certain personal information), you can simply remove the corresponding rows.
-
-### Step 3: Prepare dataset
-<!-- **Step 3: Prepare dataset** -->
-
-1. Simply run `./prepare_dataset.sh`.<details>
+1. Run `CUDA_VISIBLE_DEVICES=X python ./prepare_data.py`.<details>
     <summary> This scripts takes care of all the prerequisites before training (expand for details). </summary>
 
+    - Extracts your emails in text format to `data/<username>_clean.jsonl` which you can manually inspect.
     - Creates synthetic prompts for your emails as described in the [data playback](#film_projector-step-1-data-playback) section. The results are stored in `data/<username>_clean_summarized.jsonl` and you can inspect the `"summary"` field.
     - Splits data into training and test subsets. See `data/train.jsonl` and `data/test.jsonl`.
     - Creates a vector database from the embeddings of the training emails which will later be used for *Retrieval-Augmented Generation (RAG)*. See `data/<username>.pkl` and `data/<username>.faiss`.
     </details>
 
-### Step 4: Train a LLM on your emails
-<!-- **Step 4: Train a LLM on your emails** -->
+ODO Jen: This doesn't work anymore, because we make the RAG database right away. If you wish to eliminate any emails from the training set (e.g. containing certain personal information), you can simply remove the corresponding rows.
+
+### Step 3: Train a LLM on your emails
+<!-- **Step 3: Train a LLM on your emails** -->
 
 We currently support `LLaMA3-8B-Instruct` and `Mistral-Instruct-v0.2` LLMs as base models; the former is the default, but we obtained good results with either model.   
 
 1. [Recommended] For parameter efficient fine-tuning, run `./train_rosa.sh`.  
 If a larger GPU is available and full-parameter fine-tuning is possible, run `./train_fft.sh`.
 
-2. We have prepopulated the training scripts with parameter values that worked best for us. We recommend you try those first, but you can also experiment with different hyper-parameters by passing extra arguments to the training script, such as `LR`, `LORA_LR`, `NUM_EPOCHS`. All the trained models are saved in the `checkpoints` directory.
+2. We have prepopulated the training configs with parameter values that worked best for us. We recommend you try those first, but you can also experiment with different hyper-parameters by passing extra arguments to the training script, such as `lr`, `lora_lr`, `num_epochs`. All the trained models are saved in the `checkpoints` directory.
 
 Examples:
 ``` bash
 ./train_rosa.sh                                   # Will use the default parameters.
 
-./train_rosa.sh LR=1e-6 LORA_LR=1e-6 NUM_EPOCHS=7 # Will override LR, LORA_LR, and NUM_EPOCHS.
+./train_rosa.sh finetuning.lr=1e-6 finetuning.rosa_lr=1e-6 finetuning.max_duration=7ep.
 ```
 
 ### Step 5: Launch Panza!
 <!-- **Step 5: Launch Panza!** -->
 
-1. Run `./run_panza_gui.sh MODEL=<path-to-your-trained-model>` to serve the trained model in a friendly GUI.  
-Alternatively, if you prefer using the CLI to interact with Panza, run `./run_panza_cli.sh` instead.
+- To run Panza after a full training run, try something like `CUDA_VISIBLE_DEVICES=0 python3 runner.py user=USERNAME interfaces=cli writer/llm=transformers`.
+- To run Panza after a RoSA or LoRA training run, replace `writer/llm=transformers` with `writer/llm=peft` TODO Armand: can we fix this? 
 
-You can experiment with the following arguments:
-- If `MODEL` is not specified, it will use a pretrained `Meta-Llama-3-8B-Instruct` model by default, although Panza also works with `Mistral-7B-Instruct-v2`. Try it out to compare the syle difference!
-- To disable RAG, run with `PANZA_DISABLE_RAG_INFERENCE=1`.
-
-Example:
-``` bash
-./run_panza_gui.sh \
-  MODEL=/local/path/to/this/repo/checkpoints/models/panza-rosa_1e-6-seed42_7908 \
-  PANZA_DISABLE_RAG_INFERENCE=0  # this is the default behaviour, so you can omit it
-```
 
 :email: **Have fun with your new email writing assistant!** :email:
 
