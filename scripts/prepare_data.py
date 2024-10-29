@@ -80,12 +80,13 @@ def generate_synthetic_instructions(
 
 
 def check_if_file_exists(cfg: DictConfig) -> None:
-    if os.path.exists(cfg.cleaned_emails_path) and not cfg.force:
+    if os.path.exists(cfg.cleaned_emails_path) and not cfg.force_extract_clean_emails:
         LOGGER.warning(
-            "Summaries already exists, program will close. "
-            "If you want to regenerate use the flag force=true."
+            f"Cleaned email file already exists, using existing file {cfg.cleaned_emails_path}. "
+            "If you want to regenerate use the flag force_extract_clean_emails=true."
         )
-        sys.exit(0)
+        return True
+    return False
 
 
 def split_and_write_data(cfg):
@@ -121,16 +122,13 @@ def main(cfg: DictConfig) -> None:
     LOGGER.info("Running Panza Data Preparation")
     LOGGER.info("Configuration: \n%s", OmegaConf.to_yaml(cfg, resolve=True))
 
-
-    # Skip running if summaries already exist
-    check_if_file_exists(cfg)
-
     # Rename config keys to follow class structure
     rename_config_keys(cfg)
 
-    # Extract the emails from the .mbox file
-    extract_emails(cfg.email_dump_path, cfg.cleaned_emails_path, [cfg.user.email_address], cfg.discarded_emails_dir)
-    # Filter emails?
+    # Skip running if  already exist
+    if not check_if_file_exists(cfg):
+        # Extract the emails from the .mbox file
+        extract_emails(cfg.email_dump_path, cfg.cleaned_emails_path, [cfg.user.email_address], cfg.discarded_emails_dir)
 
     # Instantiate Panza writer
     writer: PanzaWriter = hydra.utils.instantiate(cfg.writer)
