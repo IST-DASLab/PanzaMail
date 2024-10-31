@@ -109,19 +109,19 @@ At the end of this step you should have the downloaded emails placed inside `dat
 ### Step 1: Environment configuration
 
 <!-- 🎛️ -->
-Panza is configured through a set of yaml configurations defined in `configs/`. There is a single high-level config under `configs/base.yaml`, and the rest are organized unders the main functionalities of the code.
-Note that these task-specific configs can, in some cases, be used to overrride base configs.
+Panza is configured through a set of yaml configurations defined in `configs/`. There is a single high-level config under `configs/base.yaml`, and the rest are organized under the main functionalities of the code.
+Note that these task-specific configs can, in some cases, be used to override base configs.
  Specific use cases, such as hyperparameter tuning, are covered in more detail in `scripts/README.md`. (TODO jen: write this up.)
 
 1. Data preparation: `configs/data_preparation.yaml`. Additionally, a custom user config must be added under `config/users/` (see below).
 1. Finetuning: the main config is in `configs/panza_finetuning.yaml` and the method-specific ones are in `configs/finetuning/`
-1. Serving: Serving consists of two parts - a serving infrastructre (that we call 'writer') that runs the LLM and so converts prompts to Panza outputs, and an `interface`, which presents the outputs in a useful form - through a command-line interface, a web interface, a gmail client (TODO:Sean), or in a bulk `.json` format (useful for evaluation). The configs for serving are in `panza_writer.yaml`, and for the interfaces, under `configs/interfaces`.
+1. Serving: Serving consists of two parts - a serving infrastructure (that we call 'writer') that runs the LLM and so converts prompts to Panza outputs, and an `interface`, which presents the outputs in a useful form - through a command-line interface, a web interface, a gmail client (TODO:Sean), or in a bulk `.json` format (useful for evaluation). The configs for serving are in `panza_writer.yaml`, and for the interfaces, under `configs/interfaces`.
 
 <!-- 💬 -->
 These scripts are described in more detail in `scripts/README.md`, but a few customizations need to happen immediately.
 :warning: Before continuing, make sure you complete the following setup:
 - Optionally, copy `users/default.yaml` to `users/[YOURNAME].yaml`. If this is skipped, perform the following modifications on `users/default.yaml` directly.
-- In the user config, set the email address and username. The email address should be the sender address in the exported emails. (Panza uses this to edit out responses and other emails sent by a different author in the `.mbox` dump.)
+- In the user config, set the email address and username. The email address should be the sender address in the exported emails. (Panza uses this to edit out responses and other emails sent by a different author in the `.mbox` dump.). The username does not have to link to the email itself - it is simply used as a name for the various data files that will come out of the data preparation process.
 - Modify the personal prompt in `prompt_preambles/user_preamble.txt` to include some basic information about yourself that Panza can use to customize your emails with your correct full name, address, phone number, etc.
   
 

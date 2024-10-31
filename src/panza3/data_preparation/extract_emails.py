@@ -3,6 +3,8 @@ import json
 import mailbox
 import re
 from email.utils import parsedate_to_datetime
+from email.message import Message
+from mailbox import mboxMessage
 from os import makedirs
 from os.path import join, dirname
 
@@ -42,7 +44,7 @@ def remove_date_time(email_body):
 
     match = pattern.search(email_body)
     if match:
-        return (email_body[:match.start()] + email_body[match.end():]).strip()
+        return (email_body[: match.start()] + email_body[match.end() :]).strip()
     else:
         return email_body
 
@@ -61,17 +63,17 @@ def count_words(s):
 
 def extract_by_quote_level(text):
     # Split the text into lines
-    lines = text.split('\n')
+    lines = text.split("\n")
 
     # Dictionary to store lines by quote level
     grouped_lines = {}
 
     for line in lines:
         # Count the number of '>' at the start of the line
-        quote_level = len(re.match(r'^>*', line).group())
+        quote_level = len(re.match(r"^>*", line).group())
 
         # Remove leading '>' and spaces
-        clean_line = re.sub(r'^>*\s*', '', line)
+        clean_line = re.sub(r"^>*\s*", "", line)
 
         # Add the clean line to the appropriate group
         if quote_level not in grouped_lines:
@@ -99,7 +101,7 @@ def filter_message(msg):
     email_with_thread = [remove_date_time(an_email) for an_email in email_with_thread]
 
     main_email = email_with_thread.pop(0)
-    email_with_thread.reverse() # chronological order
+    email_with_thread.reverse()  # chronological order
 
     # check length before detecting language
     if count_words(main_email) < SHORT_EMAIL_THRESHOLD:
@@ -139,13 +141,27 @@ def extract_emails(mailbox_path, output_path, email_addresses, save_discarded_em
                     if filtered_msg is not None:
                         print(filtered_msg)
                         main_email, thread = filtered_msg
-                        CLEAN_EMAILS.append({"email": main_email, "thread": thread, "subject": message["Subject"], "date": date})
+                        CLEAN_EMAILS.append(
+                            {
+                                "email": main_email,
+                                "thread": thread,
+                                "subject": message["Subject"],
+                                "date": date,
+                            }
+                        )
             else:
                 filtered_msg = filter_message(message)
                 if filtered_msg is not None:
                     print(filtered_msg)
                     main_email, thread = filtered_msg
-                    CLEAN_EMAILS.append({"email": main_email, "thread": thread, "subject": message["Subject"], "date": date})
+                    CLEAN_EMAILS.append(
+                        {
+                            "email": main_email,
+                            "thread": thread,
+                            "subject": message["Subject"],
+                            "date": date,
+                        }
+                    )
 
     print(f"\n---> [Cleaning stats] <---")
     print(f"# clean emails = {len(CLEAN_EMAILS)}")
@@ -173,12 +189,12 @@ def extract_emails(mailbox_path, output_path, email_addresses, save_discarded_em
     if save_discarded_emails_path and save_discarded_emails_path != "":
         makedirs(save_discarded_emails_path, exist_ok=True)
         for k, v in DISCARDED_EMAILS.items():
-            output_path = join(
-                save_discarded_emails_path, f"{username}_discarded_{k}.jsonl"
-            )
+            output_path = join(save_discarded_emails_path, f"{username}_discarded_{k}.jsonl")
             with open(output_path, "w", encoding="utf-8") as f:
                 for i, item in enumerate(v):
                     print("\n\n\n\n\===========================")
+                    if type(item) is Message or type(item) is mboxMessage:
+                        item = item.get_payload()
                     print(item)
                     print("this is number", i, output_path)
                     json_record = json.dumps(item)

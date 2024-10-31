@@ -1,4 +1,4 @@
-wandb_disabled: false
+wandb_disabled: true # We assume that wandb is disabled unless the user has logged on.
 
 max_seq_len: 512
 global_seed: ${seed}
