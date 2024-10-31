@@ -9,6 +9,7 @@ from os.path import join
 import langdetect
 
 CLEAN_EMAILS = []
+TRUNCATED_EMAILS_COUNTER = 0
 DISCARDED_EMAILS = {
     "non_english": [],
     "forwarded": [],
@@ -18,7 +19,7 @@ DISCARDED_EMAILS = {
 }
 
 SHORT_EMAIL_THRESHOLD = 10  # words
-
+LONG_EMAIL_THRESHOLD = 500 # words
 
 def extract_only_plain_text(msg_part):
     if msg_part.get_content_type() == "text/plain":
@@ -46,6 +47,11 @@ def remove_date_time(email_body):
     else:
         return email_body
 
+def truncate_long_emails(email_body):
+    if count_words(email_body) > LONG_EMAIL_THRESHOLD:
+        TRUNCATED_EMAILS_COUNTER += 1
+        return " ".join(email_body.split()[:LONG_EMAIL_THRESHOLD])
+    return email_body
 
 def remove_lines_starting_with_gt(text):
     lines = text.split("\n")
@@ -100,6 +106,9 @@ def filter_message(msg):
 
     main_email = email_with_thread.pop(0)
     email_with_thread.reverse() # chronological order
+    
+    # truncate long emails
+    main_email = truncate_long_emails(main_email)
 
     # check length before detecting language
     if count_words(main_email) < SHORT_EMAIL_THRESHOLD:
@@ -171,6 +180,7 @@ def main():
         f"\n\t forwarded = {len(DISCARDED_EMAILS['forwarded'])}"
         f"\n\t cant_decode_utf8 = {len(DISCARDED_EMAILS['cant_decode_utf8'])}"
     )
+    print(f"# truncated emails = {TRUNCATED_EMAILS_COUNTER}")
 
     first_email = EMAIL[0]
     username = first_email[: first_email.find("@")]
