@@ -3,9 +3,11 @@
 source config.sh
 
 MODEL="../checkpoints/models/panza_seanyang711_llama3_bf16-bs8-rosa_wl16_d0.01_1grads_mean_squared_r8_loralr1e-5_alpha16-lr1e-5-epochs5-wu8-seed42-PREAMBLE-16296"
+MODEL="../checkpoints/models/panza_llama3_bf16-bs8-rosa_wl16_d0_1grads_mean_squared_r8_loralr1e-5_alpha16-lr1e-5-epochs5-wu8-seed42-PREAMBLE-31921"
+MODEL="../checkpoints/models/panza_jen.iofinova-Meta-Llama-3-8B-Instruct-bf16-bs8-fft-lr1e-05-3ep-seed41"
 
 DEVICE="cuda:1"
-DTYPE="bf16"
+DTYPE="auto"
 
 for ARGUMENT in "$@"
 do
@@ -32,5 +34,4 @@ python ${INFERENCE_SCRIPT} \
     --db-path=${PANZA_DATA_DIR} \
     --index-name=${PANZA_USERNAME} \
     --rag-relevance-threshold=${PANZA_RAG_RELEVANCE_THRESHOLD} \
-    ${USE_RAG} \
     ${USE_4BIT_QUANT}

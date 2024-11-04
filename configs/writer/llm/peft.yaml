@@ -4,6 +4,6 @@ defaults:
 _target_: panza3.llm.PeftLLM
 name: ${checkpoint}
 checkpoint: ${checkpoint}
-device: "cpu"  # Alternatively, "cuda"
+device: "cuda"  # Alternatively, "cuda"
 dtype: "fp32"
 load_in_4bit: false

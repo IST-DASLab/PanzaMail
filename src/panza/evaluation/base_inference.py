@@ -8,6 +8,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from panza.utils import prompting
 from panza.utils.documents import Email
+from transformers import AutoTokenizer, AutoModelForCausalLM
+from peft import AutoPeftModelForCausalLM
 
 sys.path.pop(0)
 

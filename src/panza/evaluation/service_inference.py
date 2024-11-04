@@ -56,9 +56,11 @@ if args.use_rag:
     embeddings_model = rag.get_embeddings_model(args.embedding_model)
     db = rag.load_vector_db_from_disk(args.db_path, args.index_name, embeddings_model)
 
-system_preamble, user_preamble, rag_preamble = prompting.load_all_preambles(
-    args.system_preamble, args.user_preamble, args.rag_preamble
-)
+#system_preamble, user_preamble, rag_preamble = prompting.load_all_preambles(
+#    args.system_preamble, args.user_preamble, args.rag_preamble
+#)
+
+system_preamble, user_preamble, rag_preamble = ("", "", "")
 
 def predict(user_input):
     prompts, outputs = base_inference.run_inference(

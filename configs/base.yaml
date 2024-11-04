@@ -3,7 +3,7 @@ defaults:
 
 panza_workspace: ${hydra:runtime.cwd}/../
 checkpoint_dir: ${panza_workspace}/checkpoints
-seed: 42
+seed: 41
 
 embedding_model: "sentence-transformers/all-mpnet-base-v2"
 model_precision: bf16 # bf16 or fp32

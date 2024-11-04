@@ -4,6 +4,6 @@ defaults:
 _target_: panza3.llm.TransformersLLM
 name: ${checkpoint}
 checkpoint: ${checkpoint}
-device: "cpu"
+device: "cuda"
 dtype: "fp32"
 load_in_4bit: false
