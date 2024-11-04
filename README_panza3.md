@@ -120,8 +120,8 @@ Note that these task-specific configs can, in some cases, be used to override ba
 <!-- 💬 -->
 These scripts are described in more detail in `scripts/README.md`, but a few customizations need to happen immediately.
 :warning: Before continuing, make sure you complete the following setup:
-- Optionally, copy `users/default.yaml` to `users/[YOURNAME].yaml`. If this is skipped, perform the following modifications on `users/default.yaml` directly.
-- In the user config, set the email address and username. The email address should be the sender address in the exported emails. (Panza uses this to edit out responses and other emails sent by a different author in the `.mbox` dump.). The username does not have to link to the email itself - it is simply used as a name for the various data files that will come out of the data preparation process.
+- Optionally, copy `users/default.yaml` to `users/[YOURNAME].yaml`. If this is skipped, perform the following modifications on `users/default.yaml` directly. A useful tip for choosing the name of `[YOURNAME]` is to set it to the output of `whoami`.
+- In the user config, set the email address and username. The email address should be the sender address in the exported emails. (Panza uses this to edit out responses and other emails sent by a different author in the `.mbox` dump.). The username does not have to link to the email itself - it is simply used as a name for the various data files that will come out of the data preparation process. A handy way to set this is if you set it to be the output of the `whoami` call in your shell.
 - Modify the personal prompt in `prompt_preambles/user_preamble.txt` to include some basic information about yourself that Panza can use to customize your emails with your correct full name, address, phone number, etc.
   
 
@@ -165,6 +165,17 @@ Examples:
 
 ./train_rosa.sh finetuning.lr=1e-6 finetuning.rosa_lr=1e-6 finetuning.max_duration=7ep.
 ```
+<details>
+    <summary> FAQs. </summary>
+    The bash scripts that are used to execute the finetuning procedure assume by default that your username is what is returned by the <code>whoami</code> command. This is used to locate the name of the user configs inside the <code>configs/user</code> directory as above. If you directly modified <code>default.yaml</code>, or created another yaml file where the name of that file does not match with the output of <code>whoami</code>, there will be an error. This is an easy fix. You can either:
+    <ol>
+      <li> Change the name of the yaml file to be the output of <code>whoami</code>.
+      <li> You can override the username manually when you launch the bash script by adding <code>user=x</code> where <code>x</code> is the name of the yaml file you created. For example: <code>./train_rosa.sh user=alonso</code>
+    </ol>
+  <br>
+  If you wish to add <code>CUDA_VISIBLE_DEVICES</code> to specify a specific GPU, please add this in the shell script directly by <code>export CUDA_VISIBLE_DEVICES=x</code> where <code>x</code> is the ID of the GPU you wish to use.
+  </details>
+
 
 ### Step 5: Launch Panza!
 <!-- **Step 5: Launch Panza!** -->
