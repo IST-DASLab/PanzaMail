@@ -185,7 +185,7 @@ CUDA_VISIBLE_DEVICES=X ./train_rosa.sh finetuning.lr=1e-6 finetuning.rosa_lr=1e-
   <br>
   If you wish to add <code>CUDA_VISIBLE_DEVICES</code> to specify a specific GPU, please add this in the shell script directly by <code>export CUDA_VISIBLE_DEVICES=x</code> where <code>x</code> is the ID of the GPU you wish to use.
   <br><br>
-  A known issue is that when you fine-tune your model with RAG, there can be a case when the tokenization of the dataset seemingly hangs. This is due to a known bug with with HF's <code>load_datasets</code> where <code>n_proc>1</code>. To alleviate this issue, you can set <code>torch.set_num_threads(1)</code> in <code>src/panza3/finetuning/train.py</code> or set the equivalent parameter in <code>configs/finetuning/rosa.yaml</code>.
+  A known issue is that when you fine-tune your model with RAG, there can be a case when the tokenization of the dataset seemingly hangs. This is due to a known bug with with HF's <code>map</code> function where <code>n_proc>1</code>. To alleviate this issue, you can set <code>torch.set_num_threads(1)</code> in <code>src/panza3/finetuning/train.py</code> or set the equivalent parameter in <code>configs/finetuning/rosa.yaml</code>.
   </details>
 
 
