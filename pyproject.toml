@@ -33,6 +33,9 @@ training = [
     "peft@git+https://github.com/IST-DASLab/peft-rosa.git@grad_quant_looser_versioning",
     "spops-sm-80",
 ]
+contributing = [
+    "pre-commit",
+]
 
 [build-system]
 requires = ["setuptools >= 61.0.0"]

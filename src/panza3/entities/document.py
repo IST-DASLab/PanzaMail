@@ -60,7 +60,9 @@ class Email(Document):
     def process(documents: List["Email"], chunk_size, chunk_overlap) -> List[Document]:
         # Convert e-mails to langchain documents
         documents = [
-            LangchainDocument(page_content=email.email, metadata={"serialized_document": email.serialize()})
+            LangchainDocument(
+                page_content=email.email, metadata={"serialized_document": email.serialize()}
+            )
             for email in documents
         ]
 

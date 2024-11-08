@@ -9,8 +9,6 @@ from panza3.entities import EmailInstruction
 
 PREPROCESSING_CONFIG_FILE = os.environ.get("PANZA_PREPROCESSING_CONFIG")
 if PREPROCESSING_CONFIG_FILE:
-    print("Hello from preprocessing.py")
-
     preprocessing_config = OmegaConf.load(PREPROCESSING_CONFIG_FILE)
     prompt_builder = hydra.utils.instantiate(preprocessing_config.prompting)
 
@@ -27,12 +25,10 @@ def panza_preprocessing_function(inputs: Dict) -> Dict:
         instruction = EmailInstruction(instruction=prompt_raw, thread=inputs.get("thread", []))
         prompt = prompt_builder.build_prompt(instruction)
 
-        #print(f"Prompt: {prompt}")
-
         # Generate the full conversation
         conversation = [
             {"role": "user", "content": prompt},
-            {"role": "assistant", "content": inputs["email"]}
+            {"role": "assistant", "content": inputs["email"]},
         ]
         chat_prompt = tokenizer.apply_chat_template(conversation, tokenize=False)
 

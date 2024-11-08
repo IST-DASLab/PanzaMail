@@ -1,4 +1,3 @@
-import argparse
 import json
 import mailbox
 import re
@@ -21,6 +20,8 @@ DISCARDED_EMAILS = {
 
 SHORT_EMAIL_THRESHOLD = 10  # words
 
+FORWARDED_MESSAGE_TAG = "---------- Forwarded message ---------"
+
 
 def extract_only_plain_text(msg_part):
     if msg_part.get_content_type() == "text/plain":
@@ -30,7 +31,7 @@ def extract_only_plain_text(msg_part):
 
 
 def skip_forwarded_messages(plain_text):
-    if "---------- Forwarded message ---------" in plain_text:
+    if FORWARDED_MESSAGE_TAG in plain_text:
         DISCARDED_EMAILS["forwarded"].append(plain_text)
         return ""
     else:
@@ -134,7 +135,11 @@ def extract_emails(mailbox_path, output_path, email_addresses, save_discarded_em
         print(f"--> processing {i}/{n_emails} <--")
         # Filter messages sent from your email address
         if message["from"] and any(email in message["from"] for email in EMAIL):
-            date = parsedate_to_datetime(message["Date"]).isoformat()
+            if message["Date"]:
+                date = parsedate_to_datetime(message["Date"]).isoformat()
+            else:
+                print("Date was not found in the email. Skipping.")
+                continue
             if message.is_multipart():
                 for part in message.walk():
                     filtered_msg = filter_message(part)
@@ -187,15 +192,17 @@ def extract_emails(mailbox_path, output_path, email_addresses, save_discarded_em
 
     # Save discarded emails
     if save_discarded_emails_path and save_discarded_emails_path != "":
+        print(f"\n---> Processing Discarded Emails <---")
         makedirs(save_discarded_emails_path, exist_ok=True)
         for k, v in DISCARDED_EMAILS.items():
+            print(f"--> processing {k} emails <--")
             output_path = join(save_discarded_emails_path, f"{username}_discarded_{k}.jsonl")
             with open(output_path, "w", encoding="utf-8") as f:
+                discarded_emails = len(v)
                 for i, item in enumerate(v):
                     print("\n\n\n\n\===========================")
                     if type(item) is Message or type(item) is mboxMessage:
                         item = item.get_payload()
-                    print(item)
-                    print("this is number", i, output_path)
+                    print(f"--> processing {i}/{discarded_emails} <--")
                     json_record = json.dumps(item)
                     f.write(json_record + "\n")
