@@ -6,7 +6,6 @@ import os
 from omegaconf import DictConfig, OmegaConf
 
 from panza3 import PanzaWriter  # The import also loads custom Hydra resolvers
-from panza3.entities import EmailInstruction
 
 LOGGER = logging.getLogger(__name__)
 
@@ -26,13 +25,15 @@ def rename_config_keys(cfg: DictConfig) -> None:
 
 
 def set_latest_model(cfg: DictConfig) -> None:
-    model_files = glob.glob(f'{cfg.checkpoint_dir}/models/*') # * means all if need specific format then *.csv
+    model_files = glob.glob(
+        f"{cfg.checkpoint_dir}/models/*"
+    )  # * means all if need specific format then *.csv
     latest_file = max(model_files, key=os.path.getctime)
-    
+
     OmegaConf.set_struct(cfg, False)
     cfg.checkpoint = latest_file
     OmegaConf.set_struct(cfg, True)
-    
+
 
 @hydra.main(version_base="1.1", config_path="../configs", config_name="panza_writer")
 def main(cfg: DictConfig) -> None:
@@ -40,7 +41,6 @@ def main(cfg: DictConfig) -> None:
     LOGGER.info("Configuration: \n%s", OmegaConf.to_yaml(cfg, resolve=True))
 
     # Rename config keys to follow class structure
-    
     rename_config_keys(cfg)
     # Find the latest checkpoint, if requested.
     set_latest_model(cfg)

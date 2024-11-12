@@ -1,7 +1,7 @@
 import copy
 import json
 import time
-from abc import ABC, abstractmethod
+from abc import ABC
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from typing import Dict, List, Optional, Union
@@ -12,6 +12,7 @@ from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from langchain_core.vectorstores import VectorStore
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+
 
 @dataclass(kw_only=True)
 class Email(ABC):
@@ -65,7 +66,7 @@ def load_vector_db_from_disk(
         print("Faiss index loaded ")
         return db
     except Exception as e:
-        print("Fiass index loading failed \n", e)
+        print("FAISS index loading failed \n", e)
 
 
 def load_emails(path: str) -> List[Email]:
@@ -93,9 +94,10 @@ def process_emails(emails: List[Email], chunk_size: int, chunk_overlap: int) -> 
     return documents
 
 
-
-def create_vector_store(path_to_emails, chunk_size, chunk_overlap, db_path, index_name, embedding_model):
-
+def create_vector_store(
+    path_to_emails, chunk_size, chunk_overlap, db_path, index_name, embedding_model
+):
+    """Create FAISS vector database for search and retrieval."""
     # Load emails
     emails = load_emails(path_to_emails)
     print(f"Loaded {len(emails)} emails.")
@@ -116,4 +118,3 @@ def create_vector_store(path_to_emails, chunk_size, chunk_overlap, db_path, inde
     # Save vector DB to disk
     db.save_local(folder_path=db_path, index_name=index_name)
     print(f"Vector DB index {index_name} saved to {db_path}.")
-

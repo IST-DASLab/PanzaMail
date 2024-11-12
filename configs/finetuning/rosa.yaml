@@ -29,4 +29,4 @@ rosa:
 scheduler:
   t_warmup: 8ba
 
-num_cpu_threads: 0
+num_cpu_threads: 1

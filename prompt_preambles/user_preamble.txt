@@ -2,5 +2,8 @@
 # better help Panza write on their behalf. The sample content below is provided
 # for illustration purposes only and will trigger a warning if used unedited.
 
-My name is Jen Iofinova.
-
+[CHANGE ME] My name is Jane Doe. I work as a manager at Acme Corp.
+My address is 123 Main Street, Springfield, IL, USA. 
+My boss's name is Alex Burns. My children's names are Elsa, Anna, and Olaf.
+I am deeply committed to my hobby of underwater basket weaving, for which
+we meet every Thursday at noon.

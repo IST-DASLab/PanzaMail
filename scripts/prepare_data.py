@@ -4,7 +4,6 @@ import logging
 import os
 import random
 import shutil
-import sys
 import time
 from typing import List
 
@@ -58,7 +57,6 @@ def generate_synthetic_instructions(
         for i in tqdm(range(0, len(documents), batch_size)):
             print(f"--> Processing batch {i // batch_size + 1}/{num_batches}")
             batch = documents[i : i + batch_size]
-            # TODO: Rename .email to .content
             instructions = [
                 SummarizationInstruction(instruction=document.email) for document in batch
             ]
@@ -67,7 +65,7 @@ def generate_synthetic_instructions(
             num_processed_documents += len(summaries)
 
             for it, summary in enumerate(summaries):
-                # TODO: Add cleaning and filtering
+                # Considerf adding cleaning and filtering here.
                 batch[it].summary = summary
 
             # Write the summarized documents to a file
@@ -105,7 +103,7 @@ def split_and_write_data(cfg):
         else:
             raise ValueError("Invalid split type.")
 
-        train_size = int(len(data) * 1-cfg.test_split)
+        train_size = int(len(data) * 1 - cfg.test_split)
 
         with open(os.path.join(cfg.user.data_dir, "train.jsonl"), "w") as f:
             for i in range(train_size):
@@ -114,7 +112,6 @@ def split_and_write_data(cfg):
         with open(os.path.join(cfg.user.data_dir, "test.jsonl"), "w") as f:
             for i in range(train_size, len(data)):
                 f.write(data[i])
-
 
 
 @hydra.main(version_base="1.1", config_path="../configs", config_name="panza_preparation")
@@ -128,7 +125,12 @@ def main(cfg: DictConfig) -> None:
     # Skip running if  already exist
     if not check_if_file_exists(cfg):
         # Extract the emails from the .mbox file
-        extract_emails(cfg.email_dump_path, cfg.cleaned_emails_path, [cfg.user.email_address], cfg.discarded_emails_dir)
+        extract_emails(
+            cfg.email_dump_path,
+            cfg.cleaned_emails_path,
+            [cfg.user.email_address],
+            cfg.discarded_emails_dir,
+        )
 
     # Instantiate Panza writer
     writer: PanzaWriter = hydra.utils.instantiate(cfg.writer)
@@ -142,14 +144,24 @@ def main(cfg: DictConfig) -> None:
     # Load documents
     documents = load_documents(cfg.cleaned_emails_path)
     generate_synthetic_instructions(
-        documents=documents, writer=writer, batch_size=cfg.batch_size, output_path=cfg.summarized_emails_path
+        documents=documents,
+        writer=writer,
+        batch_size=cfg.batch_size,
+        output_path=cfg.summarized_emails_path,
     )
 
     # Write the test data to test.jsonl, with an optional train-test split
     split_and_write_data(cfg)
 
     # Use only the training data (which might be all the data) for RAG.
-    create_vector_store(os.path.join(cfg.user.data_dir, "train.jsonl"), cfg.rag_embedding_chunk_size, cfg.rag_embedding_chunk_overlap, cfg.rag_db_dir, cfg.user.username, cfg.rag_embedding_model)
+    create_vector_store(
+        os.path.join(cfg.user.data_dir, "train.jsonl"),
+        cfg.rag_embedding_chunk_size,
+        cfg.rag_embedding_chunk_overlap,
+        cfg.rag_db_dir,
+        cfg.user.username,
+        cfg.rag_embedding_model,
+    )
 
 
 if __name__ == "__main__":
