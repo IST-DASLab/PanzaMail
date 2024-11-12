@@ -1,4 +1,4 @@
-email_address: "abc@xyz.com"  # Change this to your email address!
+email_address: "jen.iofinova@gmail.com"  # Change this to your email address!
 username: "jen.iofinova"  # TODO(armand): Use custom resolver to extract username from email address.
 
 data_dir: ${panza_workspace}/data

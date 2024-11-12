@@ -120,7 +120,7 @@ Note that these task-specific configs can, in some cases, be used to override ba
 <!-- 💬 -->
 These scripts are described in more detail in `scripts/README.md`, but a few customizations need to happen immediately.
 :warning: Before continuing, make sure you complete the following setup:
-- Optionally, copy `users/default.yaml` to `users/[YOURNAME].yaml`. If this is skipped, perform the following modifications on `users/default.yaml` directly. A useful tip for choosing the name of `[YOURNAME]` is to set it to the output of `whoami`.
+- Copy `users/default.yaml` to `users/[YOURNAME].yaml`. If this is skipped, perform the following modifications on `users/default.yaml` directly. A useful tip for choosing the name of `[YOURNAME]` is to set it to the output of `whoami`. If you modify the default yaml, you will need specify `user=default` as an extra flag in the succeeding steps.
 - In the user config, set the email address and username. The email address should be the sender address in the exported emails. (Panza uses this to edit out responses and other emails sent by a different author in the `.mbox` dump.). The username does not have to link to the email itself - it is simply used as a name for the various data files that will come out of the data preparation process. A handy way to set this is if you set it to be the output of the `whoami` call in your shell.
 - Modify the personal prompt in `prompt_preambles/user_preamble.txt` to include some basic information about yourself that Panza can use to customize your emails with your correct full name, address, phone number, etc.
   
@@ -146,6 +146,16 @@ cd scripts
     - Splits data into training and test subsets. See `data/train.jsonl` and `data/test.jsonl`.
     - Creates a vector database from the embeddings of the training emails which will later be used for *Retrieval-Augmented Generation (RAG)*. See `data/<username>.pkl` and `data/<username>.faiss`.
     </details>
+**NB**: if you did not change the default configuration in `user/default.yaml` to reflect your particulars but rather created a new file, you need to add the additional flag to the above command where you specify `user=x` where your config file was named `x.yaml`.
+
+<details>
+    <summary> FAQs. </summary>
+    When running the above script, you may encounter an <code>OutOfMemoryError</code>. If this is the case, you can either:
+    <ol>
+      <li> Reduce the batch size for the data processing step. This can be found in <code>configs/panza_preparation.yaml</code>.
+      <li> Move to a machine that has more memory.
+    </ol>
+  </details>
 
 ODO Jen: This doesn't work anymore, because we make the RAG database right away. If you wish to eliminate any emails from the training set (e.g. containing certain personal information), you can simply remove the corresponding rows.
 
@@ -161,9 +171,9 @@ If a larger GPU is available and full-parameter fine-tuning is possible, run `./
 
 Examples:
 ``` bash
-./train_rosa.sh                                   # Will use the default parameters.
+CUDA_VISIBLE_DEVICES=X ./train_rosa.sh                                   # Will use the default parameters.
 
-./train_rosa.sh finetuning.lr=1e-6 finetuning.rosa_lr=1e-6 finetuning.max_duration=7ep.
+CUDA_VISIBLE_DEVICES=X ./train_rosa.sh finetuning.lr=1e-6 finetuning.rosa_lr=1e-6 finetuning.max_duration=7ep.
 ```
 <details>
     <summary> FAQs. </summary>
@@ -174,6 +184,8 @@ Examples:
     </ol>
   <br>
   If you wish to add <code>CUDA_VISIBLE_DEVICES</code> to specify a specific GPU, please add this in the shell script directly by <code>export CUDA_VISIBLE_DEVICES=x</code> where <code>x</code> is the ID of the GPU you wish to use.
+  <br><br>
+  A known issue is that when you fine-tune your model with RAG, there can be a case when the tokenization of the dataset seemingly hangs. This is due to a known bug with with HF's <code>map</code> function where <code>n_proc>1</code>. To alleviate this issue, you can set <code>torch.set_num_threads(1)</code> in <code>src/panza3/finetuning/train.py</code> or set the equivalent parameter in <code>configs/finetuning/rosa.yaml</code>.
   </details>
 
 
@@ -194,11 +206,28 @@ Examples:
 - [Hyper-Parameter Tuning Guide](./scripts/README.md#hyper-parameter-tuning-guide)
 - [Prompt Preambles Tutorial](prompt_preambles/README.md)
 
+## :woman_technologist: Contributing
+If you liked our work and want to contribute to improve the system, please feel free to do so! Make a _fork_ of our repository and once you have made your changes, submit a pull request so that we can review!
+
+One thing to mention: we want to make sure that we all adhere to the same coding standards, so we have added Black, a code formatter, as a prehook. To ensure that all your files are formatted with Black, do the following:
+
+1. Install the necessary dependencies
+```
+pip install .[contributing]
+```
+
+2. Run the precommit command
+```
+pre-commit install
+```
+
+3. Continue adding code as usual. All your code will be formatted by Black before commiting!
+
 ## Authors
 
 Panza was conceived by Nir Shavit and Dan Alistarh and built by the [Distributed Algorithms and Systems group](https://ist.ac.at/en/research/alistarh-group/) at IST Austria. The contributors are (in alphabetical order):
 
-Dan Alistarh, Eugenia Iofinova, Andrej Jovanovic, Eldar Kurtic, Ilya Markov, Armand Nicolicioiu, Mahdi Nikdan, Andrei Panferov, Nir Shavit, and Sean Yang.
+Dan Alistarh, Eugenia Iofinova, Eldar Kurtic, Ilya Markov, Armand Nicolicioiu, Mahdi Nikdan, Andrei Panferov, and Nir Shavit.
 
 Contact: dan.alistarh@ist.ac.at
 
