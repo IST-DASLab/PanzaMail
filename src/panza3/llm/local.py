@@ -51,7 +51,6 @@ class LocalLLM(LLM):
         self.dtype = dtype
 
         self.load_in_4bit = load_in_4bit
-        # TODO: Add conditional import for BitsAndBytesConfig?
         self.quantization_config = (
             BitsAndBytesConfig(
                 load_in_4bit=True,

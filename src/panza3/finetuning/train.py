@@ -759,7 +759,7 @@ def main(cfg: DictConfig) -> Trainer:
     # Log number of parameters
     if hasattr(model, "n_total_params"):
         n_params = model.n_total_params
-        n_trainable_params = n_params  # TODO: we currently assume all parameters are trainable.
+        n_trainable_params = n_params  # We currently assume all parameters are trainable.
     else:
         n_params = sum(p.numel() for p in model.parameters())
         n_trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)

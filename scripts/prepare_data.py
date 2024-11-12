@@ -57,7 +57,6 @@ def generate_synthetic_instructions(
         for i in tqdm(range(0, len(documents), batch_size)):
             print(f"--> Processing batch {i // batch_size + 1}/{num_batches}")
             batch = documents[i : i + batch_size]
-            # TODO: Rename .email to .content
             instructions = [
                 SummarizationInstruction(instruction=document.email) for document in batch
             ]
@@ -66,7 +65,7 @@ def generate_synthetic_instructions(
             num_processed_documents += len(summaries)
 
             for it, summary in enumerate(summaries):
-                # TODO: Add cleaning and filtering
+                # Considerf adding cleaning and filtering here.
                 batch[it].summary = summary
 
             # Write the summarized documents to a file

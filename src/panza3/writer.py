@@ -5,7 +5,6 @@ from .llm import LLM, MessageType
 from .prompting import PromptBuilder
 
 
-# TODO: Check that instruction type is compatible with prompt_builder type?
 class PanzaWriter:
     def __init__(self, prompt_builder: PromptBuilder, llm: LLM):
         self.prompt_builder = prompt_builder

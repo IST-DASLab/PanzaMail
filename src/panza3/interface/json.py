@@ -11,6 +11,14 @@ from evaluate import load
 from torchmetrics.text.bleu import BLEUScore
 from torchmetrics.text.rouge import ROUGEScore
 import string
+import nltk
+
+# Ensure that tokenizer has been downloaded to ensure script does not fail.
+try:
+    nltk.find("tokenizers/punkt_tab")
+except:
+    print("punkt_tab was not downloaded. Installing.")
+    nltk.download("punkt_tab")
 
 punc_table = str.maketrans({key: None for key in string.punctuation})
 rouge = ROUGEScore()
