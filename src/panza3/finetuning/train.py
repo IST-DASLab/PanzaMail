@@ -262,7 +262,6 @@ def build_composer_peft_model(
             bnb_4bit_quant_type='nf4',
         )
     elif weight_bias_dtype == 'bf16':
-         assert weight_bias_dtype == 'bf16', 'Only bf16 is supported for now'
          compute_dtype = torch.bfloat16
          quant_config = None
     else:
