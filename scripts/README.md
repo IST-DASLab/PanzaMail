@@ -8,21 +8,48 @@ This directory contains all scripts necessary to train and run Panza. We provide
 * `config.sh` sets the necessary environment variables and other parameters used throughout the Panza workflow. This script should be edited by the user in several places: to set the user's email address (for data preprocessing), to select the LLM used for data summarization and Panza finetuning, and optionally to update the locations the data and models will be stored.
 
 #### Data preparation
-* `extract_emails.sh` extracts the user's emails from the `.mbox` file and removes any unusable ones (such as email forwards, those that seem to be written in a foreign language, or those that are too short).
-* `prepare_dataset.sh` automatically converts emails to training data by using an LLM to write their summaries in the form of prompts; it then splits them into train and test data, and prepares the RAG database.
+* `prepare_data.py` does several things:
+
+1. Extracts the user's emails from the `.mbox` file and removes any unusable ones (such as email forwards, those that seem to be written in a foreign language, or those that are too short).
+1. Automatically converts emails to training and test data by using an LLM to write their summaries in the form of prompts.
+1. Optionally, splits the summarized  into train and test data. This is not done by default because we expect most users to use the default hyperparameters, and therefore have no need for evaluation. To activate this feature, indicate the size of the test split as follows: `python ./prepare_data.py test_split=0.2`
+1. Prepares the RAG database. Note that only train data is used for this step.
 
 #### Training
-* `train_rosa.sh` performs [parameter-efficient training](https://arxiv.org/pdf/2401.04679.pdf), and evaluation. For evaluation, we use a heldout email dataset and compute the BLEU score between the output email and the one originally written by the user. 
-* `train_fft.sh` performs full-parameter/full-rank training, and then evaluation (as before). _Note that this requires additional computational resources (about 2x)._ 
+* `train_rosa.sh` performs [parameter-efficient training](https://arxiv.org/pdf/2401.04679.pdf). 
+* `train_fft.sh` performs full-parameter/full-rank training. _Note that this requires additional computational resources (about 2x)._ 
 
-#### Serving
-* `run_panza_cli.sh` runs a simple tool in the command line that enables a user to put in prompts and get Panza responses.
-* `run_panza_gui.sh` runs a simple tool in the browser that enables a user to put in prompts and get Panza responses.
 
-Both of these tools require a link to the model that you wish to use. Running without providing a `MODEL` argument will run inference on the base (non-finetuned) LLM.
+#### Inference/Serving
+
+Serving is done through the `runner` object. To use the runner, the type of model and the type of interface must be specified.
+
+For interfaces, we offer serving via CLI (command-line inference) and an online GUI (via Gradio), as well as a bulk-serving API via JSON for the JSON, the location of the file defaults to the test data, but can be overridden (see the "evaluation" section, below).
+
+Currently, we support full-finetuned and parameter-efficienty-finetuned models. These must be set through the `writer-llm` parameter. 
+* To serve a foundation (i.e., not locally-finetuned) model or a fully-finetuned model, set `writer/llm=transformers`
+* To serve a PEFT model, set `writer/llm=peft`
+
+Thus, a serving command would look something like:
 
 ```
-./run_panza_gui.sh MODEL=<path-to-your-trained-model>
+python runner.py user=[username] interfaces=[cli|gui] writer/llm=[peft|transformers] checkpoint=[checkpoint_loc]
+```
+
+For the json interface, it would look like:
+
+```
+python runner.py user=[username] interfaces=json writer/llm=[peft|transformers] checkpoint=[checkpoint_loc] interfaces.input_file=[json_file_loc]
+```
+
+##### Evaluation
+
+We think of evaluation as a special form of bulk inference/serving. Thus, like other forms of inference, it is done through a runner, specifically through the `json` interface.
+
+A sample command that runs interface over the test set looks like:
+
+```
+python runner.py user=jen interfaces=json writer/llm=[peft|transformers] checkpoint=[checkpoint_loc] interfaces.input_file=../data/test.jsonl
 ```
 
 
