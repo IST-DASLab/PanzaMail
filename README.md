@@ -157,7 +157,6 @@ cd scripts
     </ol>
   </details>
 
-ODO Jen: This doesn't work anymore, because we make the RAG database right away. If you wish to eliminate any emails from the training set (e.g. containing certain personal information), you can simply remove the corresponding rows.
 
 ### Step 3: Train a LLM on your emails
 <!-- **Step 3: Train a LLM on your emails** -->
