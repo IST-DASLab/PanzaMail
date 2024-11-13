@@ -3,7 +3,7 @@ from datetime import datetime
 
 import pytest
 
-from panza3.entities import Email, EmailInstruction
+from panza.entities import Email, EmailInstruction
 
 
 def test_email_serialization_deserialization():

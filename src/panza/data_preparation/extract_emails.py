@@ -1,10 +1,11 @@
-import argparse
 import json
 import mailbox
 import re
 from email.utils import parsedate_to_datetime
+from email.message import Message
+from mailbox import mboxMessage
 from os import makedirs
-from os.path import join
+from os.path import join, dirname
 
 import langdetect
 
@@ -19,6 +20,8 @@ DISCARDED_EMAILS = {
 
 SHORT_EMAIL_THRESHOLD = 10  # words
 
+FORWARDED_MESSAGE_TAG = "---------- Forwarded message ---------"
+
 
 def extract_only_plain_text(msg_part):
     if msg_part.get_content_type() == "text/plain":
@@ -28,7 +31,7 @@ def extract_only_plain_text(msg_part):
 
 
 def skip_forwarded_messages(plain_text):
-    if "---------- Forwarded message ---------" in plain_text:
+    if FORWARDED_MESSAGE_TAG in plain_text:
         DISCARDED_EMAILS["forwarded"].append(plain_text)
         return ""
     else:
@@ -42,7 +45,7 @@ def remove_date_time(email_body):
 
     match = pattern.search(email_body)
     if match:
-        return (email_body[:match.start()] + email_body[match.end():]).strip()
+        return (email_body[: match.start()] + email_body[match.end() :]).strip()
     else:
         return email_body
 
@@ -61,17 +64,17 @@ def count_words(s):
 
 def extract_by_quote_level(text):
     # Split the text into lines
-    lines = text.split('\n')
+    lines = text.split("\n")
 
     # Dictionary to store lines by quote level
     grouped_lines = {}
 
     for line in lines:
         # Count the number of '>' at the start of the line
-        quote_level = len(re.match(r'^>*', line).group())
+        quote_level = len(re.match(r"^>*", line).group())
 
         # Remove leading '>' and spaces
-        clean_line = re.sub(r'^>*\s*', '', line)
+        clean_line = re.sub(r"^>*\s*", "", line)
 
         # Add the clean line to the appropriate group
         if quote_level not in grouped_lines:
@@ -99,7 +102,7 @@ def filter_message(msg):
     email_with_thread = [remove_date_time(an_email) for an_email in email_with_thread]
 
     main_email = email_with_thread.pop(0)
-    email_with_thread.reverse() # chronological order
+    email_with_thread.reverse()  # chronological order
 
     # check length before detecting language
     if count_words(main_email) < SHORT_EMAIL_THRESHOLD:
@@ -121,20 +124,10 @@ def filter_message(msg):
     return (main_email.strip(), [an_email.strip() for an_email in email_with_thread])
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Process an MBOX file for PANZA project.")
-    parser.add_argument("--mbox-path", help="Path to the MBOX file.")
-    parser.add_argument("--output-path", help="Path to the directory to save the output files.")
-    parser.add_argument(
-        "--email",
-        action="append",
-        help="Email address(es) to filter the messages. Use the argument multiple times for multiple emails.",
-    )
-    parser.add_argument("--save-discarded-emails", action="store_true")
-    args = parser.parse_args()
+def extract_emails(mailbox_path, output_path, email_addresses, save_discarded_emails_path):
 
-    MBOX_PATH = args.mbox_path
-    EMAIL = args.email
+    MBOX_PATH = mailbox_path
+    EMAIL = email_addresses
 
     mbox = mailbox.mbox(MBOX_PATH)
     n_emails = len(mbox)
@@ -142,20 +135,38 @@ def main():
         print(f"--> processing {i}/{n_emails} <--")
         # Filter messages sent from your email address
         if message["from"] and any(email in message["from"] for email in EMAIL):
-            date = parsedate_to_datetime(message["Date"]).isoformat()
+            if message["Date"]:
+                date = parsedate_to_datetime(message["Date"]).isoformat()
+            else:
+                print("Date was not found in the email. Skipping.")
+                continue
             if message.is_multipart():
                 for part in message.walk():
                     filtered_msg = filter_message(part)
                     if filtered_msg is not None:
                         print(filtered_msg)
                         main_email, thread = filtered_msg
-                        CLEAN_EMAILS.append({"email": main_email, "thread": thread, "subject": message["Subject"], "date": date})
+                        CLEAN_EMAILS.append(
+                            {
+                                "email": main_email,
+                                "thread": thread,
+                                "subject": message["Subject"],
+                                "date": date,
+                            }
+                        )
             else:
                 filtered_msg = filter_message(message)
                 if filtered_msg is not None:
                     print(filtered_msg)
                     main_email, thread = filtered_msg
-                    CLEAN_EMAILS.append({"email": main_email, "thread": thread, "subject": message["Subject"], "date": date})
+                    CLEAN_EMAILS.append(
+                        {
+                            "email": main_email,
+                            "thread": thread,
+                            "subject": message["Subject"],
+                            "date": date,
+                        }
+                    )
 
     print(f"\n---> [Cleaning stats] <---")
     print(f"# clean emails = {len(CLEAN_EMAILS)}")
@@ -171,26 +182,27 @@ def main():
     first_email = EMAIL[0]
     username = first_email[: first_email.find("@")]
 
-    makedirs(args.output_path, exist_ok=True)
+    makedirs(dirname(output_path), exist_ok=True)
 
     # Save clean emails
-    with open(join(args.output_path, username + "_clean.jsonl"), "w", encoding="utf-8") as f:
+    with open(join(output_path), "w", encoding="utf-8") as f:
         for item in CLEAN_EMAILS:
             json_record = json.dumps(item)
             f.write(json_record + "\n")
 
     # Save discarded emails
-    if args.save_discarded_emails:
-        makedirs(join(args.output_path, "discarded"), exist_ok=True)
+    if save_discarded_emails_path and save_discarded_emails_path != "":
+        print(f"\n---> Processing Discarded Emails <---")
+        makedirs(save_discarded_emails_path, exist_ok=True)
         for k, v in DISCARDED_EMAILS.items():
-            output_path = join(
-                args.output_path, "discarded", username + "_discarded_" + k + ".jsonl"
-            )
+            print(f"--> processing {k} emails <--")
+            output_path = join(save_discarded_emails_path, f"{username}_discarded_{k}.jsonl")
             with open(output_path, "w", encoding="utf-8") as f:
-                for item in v:
+                discarded_emails = len(v)
+                for i, item in enumerate(v):
+                    print("\n\n\n\n\===========================")
+                    if type(item) is Message or type(item) is mboxMessage:
+                        item = item.get_payload()
+                    print(f"--> processing {i}/{discarded_emails} <--")
                     json_record = json.dumps(item)
                     f.write(json_record + "\n")
-
-
-if __name__ == "__main__":
-    main()

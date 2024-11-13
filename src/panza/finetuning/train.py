@@ -68,7 +68,7 @@ from llmfoundry.utils.registry_utils import import_file
 import hydra
 from omegaconf import DictConfig, OmegaConf
 
-from panza3 import PanzaWriter  # The import also loads custom Hydra resolvers
+from panza import PanzaWriter  # The import also loads custom Hydra resolvers
 
 log = logging.getLogger(__name__)
 
@@ -271,9 +271,9 @@ def build_composer_peft_model(
             bnb_4bit_use_double_quant=True,
             bnb_4bit_quant_type="nf4",
         )
-    elif weight_bias_dtype == 'bf16':
-         compute_dtype = torch.bfloat16
-         quant_config = None
+    elif weight_bias_dtype == "bf16":
+        compute_dtype = torch.bfloat16
+        quant_config = None
     else:
         assert weight_bias_dtype == "fp32"
         compute_dtype = torch.float32

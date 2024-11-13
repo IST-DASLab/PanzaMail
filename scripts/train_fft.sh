@@ -30,5 +30,5 @@ do
    fi
 done
 
-composer ../src/panza3/finetuning/train.py \
+composer ../src/panza/finetuning/train.py \
     finetuning=full ${vars[@]}

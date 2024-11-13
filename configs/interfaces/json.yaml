@@ -6,4 +6,4 @@ checkpoint: ${checkpoint}
 panza_workspace: ${panza_workspace}
 compute_metrics: true
 username: ${user.username}
-_target_: panza3.interface.PanzaJSON
+_target_: panza.interface.PanzaJSON

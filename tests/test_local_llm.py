@@ -3,8 +3,8 @@ from typing import Type
 import pytest
 from torch import float32 as torch_float32
 
-from panza3.llm import PeftLLM, TransformersLLM
-from panza3.llm.local import _MISSING_LIBRARIES, LocalLLM
+from panza.llm import PeftLLM, TransformersLLM
+from panza.llm.local import _MISSING_LIBRARIES, LocalLLM
 
 skip_if_no_transformers = pytest.mark.skipif(
     "transformers" in _MISSING_LIBRARIES, reason="transformers is not installed"

@@ -11,11 +11,11 @@ import hydra
 from omegaconf import DictConfig, OmegaConf
 from tqdm import tqdm
 
-from panza3 import PanzaWriter  # The import also loads custom Hydra resolvers
-from panza3.entities import Document, Email, SummarizationInstruction
-from panza3.retriever import DocumentRetriever
-from panza3.data_preparation.extract_emails import extract_emails
-from panza3.data_preparation.rag import create_vector_store
+from panza import PanzaWriter  # The import also loads custom Hydra resolvers
+from panza.entities import Document, Email, SummarizationInstruction
+from panza.retriever import DocumentRetriever
+from panza.data_preparation.extract_emails import extract_emails
+from panza.data_preparation.rag import create_vector_store
 
 LOGGER = logging.getLogger(__name__)
 

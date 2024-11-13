@@ -1,4 +1,4 @@
-_target_: panza3.retriever.FaissRetriever
+_target_: panza.retriever.FaissRetriever
 db_path: ${user.data_dir}
 index_name: ${user.username}
 embedding_model: ${embedding_model}

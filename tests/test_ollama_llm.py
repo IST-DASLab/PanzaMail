@@ -1,8 +1,8 @@
 from typing import Dict, Type
 from unittest.mock import patch, MagicMock
 
-from panza3.llm.ollama import OllamaLLM
-from panza3.llm import MessageType
+from panza.llm.ollama import OllamaLLM
+from panza.llm import MessageType
 import pytest
 
 MODEL: str = "test_model"

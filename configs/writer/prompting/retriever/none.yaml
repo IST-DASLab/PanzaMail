@@ -1,1 +1,1 @@
-_target_: panza3.retriever.NoneRetriever
+_target_: panza.retriever.NoneRetriever

@@ -3,21 +3,24 @@ from pathlib import Path
 
 import pytest
 
-from panza3.entities import Email
-from panza3.retriever import FaissRetriever
+from panza.entities import Email
+from panza.retriever import FaissRetriever
 
 
 @pytest.fixture
 def embedding_model() -> str:
     return "sentence-transformers/all-mpnet-base-v2"
 
+
 @pytest.fixture
 def generative_model() -> str:
     return "microsoft/Phi-3-mini-4k-instruct"
 
+
 @pytest.fixture
 def peft_model() -> str:
     return "microsoft/Phi-3-mini-4k-instruct"
+
 
 @pytest.fixture
 def index_name() -> str:

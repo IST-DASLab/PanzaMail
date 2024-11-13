@@ -4,9 +4,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from panza3.entities import Email, EmailInstruction
-from panza3.prompting import EmailPromptBuilder
-from panza3.retriever import FaissRetriever
+from panza.entities import Email, EmailInstruction
+from panza.prompting import EmailPromptBuilder
+from panza.retriever import FaissRetriever
 
 
 def test_email_prompt_builder(
@@ -29,13 +29,16 @@ def test_email_prompt_builder(
         instruction="Write an email.", thread=["email1", "email2", "email3"]
     )
 
-    system_preamble, user_preamble, rag_preamble, thread_preamble = (
-        EmailPromptBuilder.load_all_preambles(
-            system_preamble_path=system_preamble_path,
-            user_preamble_path=user_preamble_path,
-            rag_preamble_path=rag_preamble_path,
-            thread_preamble_path=thread_preamble_path,
-        )
+    (
+        system_preamble,
+        user_preamble,
+        rag_preamble,
+        thread_preamble,
+    ) = EmailPromptBuilder.load_all_preambles(
+        system_preamble_path=system_preamble_path,
+        user_preamble_path=user_preamble_path,
+        rag_preamble_path=rag_preamble_path,
+        thread_preamble_path=thread_preamble_path,
     )
 
     prompt_builder = EmailPromptBuilder(

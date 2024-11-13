@@ -1,5 +1,5 @@
-from panza3.entities.instruction import EmailInstruction, Instruction
-from panza3.writer import PanzaWriter
+from panza.entities.instruction import EmailInstruction, Instruction
+from panza.writer import PanzaWriter
 
 
 class PanzaCLI:

@@ -5,7 +5,7 @@ import hydra
 import os
 from omegaconf import DictConfig, OmegaConf
 
-from panza3 import PanzaWriter  # The import also loads custom Hydra resolvers
+from panza import PanzaWriter  # The import also loads custom Hydra resolvers
 
 LOGGER = logging.getLogger(__name__)
 

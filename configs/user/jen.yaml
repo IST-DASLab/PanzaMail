@@ -1,9 +1,0 @@
-email_address: "jen.iofinova@gmail.com"  # Change this to your email address!
-username: "jen.iofinova"  # TODO(armand): Use custom resolver to extract username from email address.
-
-data_dir: ${panza_workspace}/data
-
-system_preamble_path: ${panza_workspace}/prompt_preambles/system_preamble.txt
-user_preamble_path: ${panza_workspace}/prompt_preambles/user_preamble.txt
-rag_preamble_path: ${panza_workspace}/prompt_preambles/rag_preamble.txt
-thread_preamble_path: ${panza_workspace}/prompt_preambles/thread_preamble.txt

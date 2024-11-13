@@ -2,4 +2,4 @@ defaults:
   - llm: transformers
   - prompting: summarization_prompting
 
-_target_: panza3.writer.PanzaWriter
+_target_: panza.writer.PanzaWriter

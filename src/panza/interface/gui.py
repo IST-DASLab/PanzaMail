@@ -1,5 +1,5 @@
-from panza3.entities.instruction import EmailInstruction, Instruction
-from panza3.writer import PanzaWriter
+from panza.entities.instruction import EmailInstruction, Instruction
+from panza.writer import PanzaWriter
 import gradio as gr
 
 
@@ -16,16 +16,15 @@ class PanzaGUI:
                 [outputbox],
             )
 
-        panza.queue().launch(server_name="localhost", server_port=5003, share=True)
+        panza.queue().launch(server_name="localhost", server_port=5002, share=True)
 
     def get_execute(self):
         def execute(input):
             instruction: Instruction = EmailInstruction(input)
-            stream = self.writer.run(instruction, stream=False)
-            #output = ""
-            #for chunk in stream:
-            #    output += chunk
-            #yield stream.end()
-            yield stream
+            stream = self.writer.run(instruction, stream=True)
+            output = ""
+            for chunk in stream:
+                output += chunk
+                yield output
 
         return execute

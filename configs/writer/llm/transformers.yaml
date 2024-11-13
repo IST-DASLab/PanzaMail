@@ -1,7 +1,7 @@
 defaults:
   - sampling: random
 
-_target_: panza3.llm.TransformersLLM
+_target_: panza.llm.TransformersLLM
 name: ${checkpoint}
 checkpoint: ${checkpoint}
 device: "cuda"

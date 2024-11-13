@@ -2,10 +2,10 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from panza3.entities import EmailInstruction
-from panza3.llm import LLM
-from panza3.prompting import EmailPromptBuilder
-from panza3.writer import PanzaWriter
+from panza.entities import EmailInstruction
+from panza.llm import LLM
+from panza.prompting import EmailPromptBuilder
+from panza.writer import PanzaWriter
 
 
 def test_email_writer():

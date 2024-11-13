@@ -1,2 +1,2 @@
 port: 5001
-_target_: panza3.interface.PanzaWebService
+_target_: panza.interface.PanzaWebService

@@ -3,8 +3,8 @@ from pathlib import Path
 
 import pytest
 
-from panza3.entities import Email
-from panza3.retriever import FaissRetriever
+from panza.entities import Email
+from panza.retriever import FaissRetriever
 
 
 def get_faiss_retriever(
