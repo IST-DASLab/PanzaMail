@@ -59,18 +59,18 @@ python runner.py user=jen interfaces=json writer/llm=[peft|transformers] checkpo
 
 :bulb: We recommend having between 128 and 1000 sent emails as training targets. Less than 128 might cause the model to overfit, while we haven't found that more than 1000 emails help for the style transfer. However, we encourage you to include as many emails as available in the RAG database, as they will provide the model with additional context. To sub-select training data, you can perform the usual flow with all of your data (export, run `extract_emails.sh` and `prepare_dataset.sh`), and then simply remove all but your target number of rows from the resulting `train.jsonl` in the `data`.
 
-:bulb: To merge data from multiple mailboxes (such as combining your personal and work emails), run `extract_emails.sh` on each `.mbox` file, remembering to change the value of `PANZA_EMAIL_ADDRESS` in `config.sh` for every inbox. Then simply concatenate the resulting `[email_id].clean.jsonl` files to one, and use that file's `email_id` for the `PANZA_EMAIL_ADDRESS` argument in `config.sh` going forward. Make sure that the `prepare_dataset.sh` script is run _after_ the merge.
+:bulb: To merge data from multiple mailboxes (such as combining your personal and work emails), run `extract_emails.sh` on each `.mbox` file, remembering to change the value of `user.email_address` and `user.user_name` in `config.sh` for every inbox. Then simply concatenate the resulting `[user.user_name].clean.jsonl` files to one, and use that file's `user.user_name` going forward. Make sure that the `prepare_dataset.sh` script is run _after_ the merge with `force_extract_clean_emails=false`.
 
 
 ### Hyper-Parameter Tuning Guide
 
 To get the most out of Panza, it is essential to find good hyper-parameters for the fine-tuning process. 
-Specifically the key parameters to consider are the learning rates (`LR` and  `LORA_LR`, in the case of RoSA fine-tuning) and (`NUM_EPOCHS`) parameters, whose values should be adjusted based on your amount of data and model in use. 
+Specifically the key parameters to consider are the learning rates (`trainer.optimizer.lr=0.1` and  `trainer.optimizer.rosa.lora_lr`, in the case of RoSA fine-tuning) and (`trainer.optimizer.max_duration`) parameters, whose values should be adjusted based on your amount of data and model in use. 
 
 Here are some general guidelines for hyper-parameter fine-tuning: 
 
 * In our experience, a good target for the Perplexity over the training set (displayed during and at the end of the training run) is in the range 1-1.5 (for full fine-tuning) to 2-3 (for RoSA tuning). At that point, Panza should be able to reproduce your writing style quite faithfully.
-* To reach this target, you can ajust two parameters: the length of training (`NUM_EPOCHS`) and the learning rates (`LR` for full fine-tuning and `LR` and `LORA_LR` for RoSA).
+* To reach this target, you can ajust two parameters: the length of training (`trainer.optimizer.max_duration`) and the learning rates (`trainer.optimizer.lr` for full fine-tuning and `trainer.optimizer.lr` and `trainer.optimizer.rosa.lora_lr` for RoSA).
 * Specifically, for full fine-tuning we have found 3 training epochs to be sufficient. For RoSA fine-tuning, one usually needs 5-7 epochs for best results. 
-* Regarding the learning rates, we have already provided stable default values (around 1e-5 for both LLaMA3-8B and Mistral). You may adjust these depending on the amount of your local data.
+* Regarding the learning rates, we have already provided stable default values (around 1e-5 for LLaMA3-8B , Phi-3.5-mini, and Mistral). You may adjust these depending on the amount of your local data.
 * We have found that setting these values too low will yield default "impersonal'' answers (specifically, the same answers as the base model with some context). Setting them too high will lead the model to "overfit" to the user data, to the point where a lot of the latent model "knowledge" is lost. The key to good performance is to find a good middle ground between these two scenarios.  
