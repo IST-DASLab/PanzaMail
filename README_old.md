@@ -175,6 +175,7 @@ CUDA_VISIBLE_DEVICES=X ./train_rosa.sh                                   # Will 
 
 CUDA_VISIBLE_DEVICES=X ./train_rosa.sh finetuning.lr=1e-6 finetuning.rosa_lr=1e-6 finetuning.max_duration=7ep.
 ```
+
 <details>
     <summary> FAQs. </summary>
     The bash scripts that are used to execute the finetuning procedure assume by default that your username is what is returned by the <code>whoami</code> command. This is used to locate the name of the user configs inside the <code>configs/user</code> directory as above. If you directly modified <code>default.yaml</code>, or created another yaml file where the name of that file does not match with the output of <code>whoami</code>, there will be an error. This is an easy fix. You can either:
