@@ -4,7 +4,6 @@ version = "2024.08.14"
 description = "A personal email assistant, trained and running on-device."
 dependencies = [
     "torch==2.2.2",
-    "ollama",
     "omegaconf",
     "fastapi",
     "uvicorn",
