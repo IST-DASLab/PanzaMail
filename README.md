@@ -169,6 +169,13 @@ Examples:
 ./train_rosa.sh LR=1e-6 LORA_LR=1e-6 NUM_EPOCHS=7 # Will override LR, LORA_LR, and NUM_EPOCHS.
 ```
 
+On a smaller GPU, it may be necessary to further train in lower precision (QRoSA). This can be run as follows:
+
+``` bash
+./train_rosa.sh finetuning.precision=fp32 finetuning.model.weight_bias_dtype=4bit finetuning.model.compute_dtype=fp32
+```
+
+
 ### Step 5: Launch Panza!
 <!-- **Step 5: Launch Panza!** -->
 
