@@ -172,7 +172,7 @@ Examples:
 ``` bash
 CUDA_VISIBLE_DEVICES=X ./train_rosa.sh                                   # Will use the default parameters.
 
-CUDA_VISIBLE_DEVICES=X ./train_rosa.sh finetuning.lr=1e-6 finetuning.rosa_lr=1e-6 finetuning.max_duration=7ep.
+CUDA_VISIBLE_DEVICES=X ./train_rosa.sh finetuning.lr=1e-6 finetuning.rosa_lr=1e-6 finetuning.max_duration=7ep
 ```
 <details>
     <summary> FAQs. </summary>
@@ -191,8 +191,8 @@ CUDA_VISIBLE_DEVICES=X ./train_rosa.sh finetuning.lr=1e-6 finetuning.rosa_lr=1e-
 ### Step 5: Launch Panza!
 <!-- **Step 5: Launch Panza!** -->
 
-- To run Panza after a full training run, try something like `CUDA_VISIBLE_DEVICES=0 ./runner.sh user=USERNAME interfaces=cli writer/llm=transformers`.
-- To run Panza after a RoSA or LoRA training run, replace `writer/llm=transformers` with `writer/llm=peft` TODO Armand: can we fix this? 
+- To run Panza after a full training run, run a command like `CUDA_VISIBLE_DEVICES=0 ./runner.sh user=USERNAME interfaces=cli writer/llm=transformers model=latest`.
+- To run Panza after a RoSA or LoRA training run, replace `writer/llm=transformers` with `writer/llm=peft`
 
 
 :email: **Have fun with your new email writing assistant!** :email:
