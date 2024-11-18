@@ -188,6 +188,13 @@ CUDA_VISIBLE_DEVICES=X ./train_rosa.sh finetuning.lr=1e-6 finetuning.rosa_lr=1e-
   </details>
 
 
+On a smaller GPU, it may be necessary to further train in lower precision (QRoSA). This can be run as follows:
+
+``` bash
+./train_rosa.sh finetuning.precision=fp32 finetuning.model.weight_bias_dtype=4bit finetuning.model.compute_dtype=fp32
+```
+
+
 ### Step 5: Launch Panza!
 <!-- **Step 5: Launch Panza!** -->
 
