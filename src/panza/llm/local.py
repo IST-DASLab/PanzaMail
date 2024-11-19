@@ -12,7 +12,7 @@ except ImportError:
     _MISSING_LIBRARIES.append("peft")
 
 try:
-    from transformers import AutoModelForCausalLM, AutoTokenizer, TextStreamer
+    from transformers import AutoModelForCausalLM, AutoTokenizer, TextStreamer, TextIteratorStreamer
 except ImportError:
     AutoModelForCausalLM = None
     AutoTokenizer = None
@@ -88,29 +88,45 @@ class LocalLLM(LLM):
 
         return outputs
 
-    def chat_stream(self, messages: ChatHistoryType) -> Iterator[str]:
+    def chat_stream(self, messages: ChatHistoryType, iterator: bool) -> Iterator[str]:
         if isinstance(messages[0], (list, tuple)) or hasattr(messages[0], "messages"):
             raise TypeError("chat_stream does not support batched messages.")
 
-        streamer = TextStreamer(self.tokenizer)
-        encodeds = self.tokenizer.apply_chat_template(
-            messages,
-            return_tensors="pt",
-            add_generation_prompt=True,
-            padding=True,
-            truncation=True,
-            return_dict=True,
-        )
-        model_inputs = encodeds.to(self.device)
+        if iterator:
+            streamer = TextIteratorStreamer(self.tokenizer)
+            encodeds = self.tokenizer.apply_chat_template(
+                messages,
+                return_tensors="pt",
+                add_generation_prompt=True,
+                padding=True,
+                truncation=True,
+                return_dict=True,
+            )
+            model_inputs = encodeds.to(self.device)
+            generation_kwargs=dict(**model_inputs, **self.sampling_parameters, pad_token_id=self.tokenizer.pad_token_id, streamer=streamer)
+            return self.model, streamer, generation_kwargs
 
-        self.model.generate(
-            **model_inputs,
-            streamer=streamer,
-            **self.sampling_parameters,
-            pad_token_id=self.tokenizer.pad_token_id,
-        )
+        else:
+            streamer = TextStreamer(self.tokenizer)
+            encodeds = self.tokenizer.apply_chat_template(
+                messages,
+                return_tensors="pt",
+                add_generation_prompt=True,
+                padding=True,
+                truncation=True,
+                return_dict=True,
+            )
+            model_inputs = encodeds.to(self.device)
 
-        return streamer
+            self.model.generate(
+                **model_inputs,
+                streamer=streamer,
+                **self.sampling_parameters,
+                pad_token_id=self.tokenizer.pad_token_id,
+            )
+
+            return streamer
+
 
     def _check_installation(self) -> None:
         if AutoModelForCausalLM is None or AutoTokenizer is None:

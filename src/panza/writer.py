@@ -11,13 +11,13 @@ class PanzaWriter:
         self.llm = llm
 
     def run(
-        self, instruction: Instruction, stream: bool = False, return_prompt: bool = False
+        self, instruction: Instruction, stream: bool = False, iterator: bool = False, return_prompt: bool = False
     ) -> str | Iterator[str] | Tuple[str, str] | Tuple[Iterator[str], str]:
         prompt = self.prompt_builder.build_prompt(instruction)
         messages = self._create_user_message(content=prompt)
 
         if stream:
-            response = self.llm.chat_stream(messages)
+            response = self.llm.chat_stream(messages, iterator=iterator)
         else:
             response = self.llm.chat(messages)[0]
 

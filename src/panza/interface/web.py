@@ -46,7 +46,11 @@ class PanzaWebService:
 
     def _predict(self, input: str) -> Generator:
         instruction: Instruction = EmailInstruction(input)
-        stream: Generator = self.writer.run(instruction, stream=True)
+        #stream: Generator = self.writer.run(instruction, stream=True)
+        model, stream, generation_kwargs = self.writer.run(instruction, stream=True, iterator=True)
+        from threading import Thread
+        thread = Thread(target=model.generate, kwargs=generation_kwargs)
+        thread.start()
         return stream
 
     def _setup_routes(self):

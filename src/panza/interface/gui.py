@@ -21,7 +21,10 @@ class PanzaGUI:
     def get_execute(self):
         def execute(input):
             instruction: Instruction = EmailInstruction(input)
-            stream = self.writer.run(instruction, stream=True)
+            model, stream, generation_kwargs = self.writer.run(instruction, stream=True, iterator=True)
+            from threading import Thread
+            thread = Thread(target=model.generate, kwargs=generation_kwargs)
+            thread.start()
             output = ""
             for chunk in stream:
                 output += chunk
