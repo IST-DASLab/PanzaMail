@@ -200,6 +200,9 @@ Example:
 - [Hyper-Parameter Tuning Guide](./scripts/README.md#hyper-parameter-tuning-guide)
 - [Prompt Preambles Tutorial](prompt_preambles/README.md)
 
+## Privacy Statement
+The goal of Panza is to give users full control of their data and models trained on it. As such, no part of Panza, including the Chrome/GMail plugin collects any information about its users, outside of the normal summary statistics collected by Github and Google (such as the number of stars/forks/downloads). If you choose to run any part of Panza on a hosted service, e.g., on Amazon Web Services or Google Colab, we take no responsibility for any data collection or data breaches that may occur. Please use at your own risk.
+
 ## Authors
 
 Panza was conceived by Nir Shavit and Dan Alistarh and built by the [Distributed Algorithms and Systems group](https://ist.ac.at/en/research/alistarh-group/) at IST Austria. The contributors are (in alphabetical order):
