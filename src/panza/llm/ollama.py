@@ -45,29 +45,20 @@ class OllamaLLM(LLM):
             # model name is everything before the colon
             name = model["name"].split(":")[0]
             if name == self.name:
+                print(f'Model {self.name} already exists; not recreating')
                 return True
         return False
 
     def _make_modelfile_parameters(self) -> str:
         if self.sampling_parameters is None or self.sampling_parameters["do_sample"] == False:
             return ""
-        return f"""
-          PARAMETER temperature {self.sampling_parameters["temperature"]}
-          PARAMETER top_k {self.sampling_parameters["top_k"]}
-          PARAMETER top_p {self.sampling_parameters["top_p"]}
-          PARAMETER num_predict {self.sampling_parameters["max_new_tokens"]}
-        """
+        return "PARAMETER temperature 0.7\nPARAMETER top_k 50\nPARAMETER top_p 0.7\nPARAMETER num_predict 1024"
 
     def _load_model(self) -> None:
-        modelfile = f"""
-        FROM {self.gguf_file}
-        {self._make_modelfile_parameters()}
-        """
-        try:
-            ollama.create(model={self.name}, modelfile=modelfile, stream=True)
-            print("Loaded a new mode into Ollama.")
-        except:
-            raise Exception(f"Failed to load model {self.name} with GGUF file {self.gguf_file}.")
+        modelfile = f"FROM {self.gguf_file}\n{self._make_modelfile_parameters()}"
+        for resp in ollama.create(model=self.name, modelfile=modelfile, stream=True):
+            print(resp)
+        print("Loaded a new mode into Ollama", self.name)
 
     def _get_message(self, response) -> str:
         return response["message"]["content"]
@@ -88,6 +79,5 @@ class OllamaLLM(LLM):
             messages=messages,
             stream=True,
         )
-        # return a new stream that only contains the message content
         for chunk in stream:
             yield self._get_message(chunk)
