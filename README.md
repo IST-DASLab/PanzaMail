@@ -201,7 +201,7 @@ Example:
 - [Prompt Preambles Tutorial](prompt_preambles/README.md)
 
 ## Privacy Statement
-The goal of Panza is to give users full control of their data and models trained on it. As such, no part of Panza, including the Chrome/GMail plugin collects any information about its users, outside of the normal summary statistics collected by Github and Google (such as the number of stars/forks/downloads). If you choose to run any part of Panza on a hosted service, e.g., on Amazon Web Services or Google Colab, we take no responsibility for any data collection or data breaches that may occur. Please use at your own risk.
+The goal of Panza is to give users full control of their data and models trained on it. As such, no part of Panza, including the Chrome/GMail plugin collects any information about its users, outside of the normal summary statistics collected by Github and Google (such as the number of stars/forks/downloads). If you choose to run any part of Panza on a hosted service, e.g., on Amazon Web Services or Google Colab, we take no responsibility for any data collection or data breaches that may occur. Additionally, running the Panza web client or the GUI interface (via Gradio) risks providing unauthorized access to the models. Please use at your own risk.
 
 ## Authors
 
