@@ -12,7 +12,7 @@ except ImportError:
     _MISSING_LIBRARIES.append("peft")
 
 try:
-    from transformers import AutoModelForCausalLM, AutoTokenizer, TextStreamer, TextIteratorStreamer
+    from transformers import AutoModelForCausalLM, AutoTokenizer, TextIteratorStreamer
 except ImportError:
     AutoModelForCausalLM = None
     AutoTokenizer = None
@@ -47,7 +47,7 @@ class LocalLLM(LLM):
         assert dtype in [None, "fp32", "bf16"]
         if device == "cpu":
             assert dtype == "fp32", "CPU only supports fp32, please specify --dtype fp32"
-        dtype = None if dtype is None else (torch.float32 if dtype == "fp32" else torch.bfloat16)
+        dtype = torch.float if dtype is None else (torch.float32 if dtype == "fp32" else torch.bfloat16)
         self.dtype = dtype
 
         self.load_in_4bit = load_in_4bit
@@ -88,44 +88,25 @@ class LocalLLM(LLM):
 
         return outputs
 
-    def chat_stream(self, messages: ChatHistoryType, iterator: bool) -> Iterator[str]:
+    def chat_stream(self, messages: ChatHistoryType) -> Iterator[str]:
         if isinstance(messages[0], (list, tuple)) or hasattr(messages[0], "messages"):
             raise TypeError("chat_stream does not support batched messages.")
 
-        if iterator:
-            streamer = TextIteratorStreamer(self.tokenizer)
-            encodeds = self.tokenizer.apply_chat_template(
-                messages,
-                return_tensors="pt",
-                add_generation_prompt=True,
-                padding=True,
-                truncation=True,
-                return_dict=True,
-            )
-            model_inputs = encodeds.to(self.device)
-            generation_kwargs=dict(**model_inputs, **self.sampling_parameters, pad_token_id=self.tokenizer.pad_token_id, streamer=streamer)
-            return self.model, streamer, generation_kwargs
-
-        else:
-            streamer = TextStreamer(self.tokenizer)
-            encodeds = self.tokenizer.apply_chat_template(
-                messages,
-                return_tensors="pt",
-                add_generation_prompt=True,
-                padding=True,
-                truncation=True,
-                return_dict=True,
-            )
-            model_inputs = encodeds.to(self.device)
-
-            self.model.generate(
-                **model_inputs,
-                streamer=streamer,
-                **self.sampling_parameters,
-                pad_token_id=self.tokenizer.pad_token_id,
-            )
-
-            return streamer
+        streamer = TextIteratorStreamer(self.tokenizer)
+        encodeds = self.tokenizer.apply_chat_template(
+            messages,
+            return_tensors="pt",
+            add_generation_prompt=True,
+            padding=True,
+            truncation=True,
+            return_dict=True,
+        )
+        model_inputs = encodeds.to(self.device)
+        generation_kwargs=dict(**model_inputs, **self.sampling_parameters, pad_token_id=self.tokenizer.pad_token_id, streamer=streamer)
+        from threading import Thread
+        thread = Thread(target=self.model.generate, kwargs=generation_kwargs)
+        thread.start()
+        return streamer
 
 
     def _check_installation(self) -> None:

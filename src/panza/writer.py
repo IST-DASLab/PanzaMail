@@ -17,7 +17,7 @@ class PanzaWriter:
         messages = self._create_user_message(content=prompt)
 
         if stream:
-            response = self.llm.chat_stream(messages, iterator=iterator)
+            response = self.llm.chat_stream(messages)
         else:
             response = self.llm.chat(messages)[0]
 
