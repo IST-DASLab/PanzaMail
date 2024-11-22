@@ -37,6 +37,7 @@ class LocalLLM(LLM):
         sampling_parameters: Dict,
         dtype: str,
         load_in_4bit: bool,
+        remove_prompt_from_stream: bool,
     ):
         self._check_installation()
 
@@ -47,9 +48,10 @@ class LocalLLM(LLM):
         assert dtype in [None, "fp32", "bf16"]
         if device == "cpu":
             assert dtype == "fp32", "CPU only supports fp32, please specify --dtype fp32"
-        dtype = torch.float if dtype is None else (torch.float32 if dtype == "fp32" else torch.bfloat16)
+        dtype = None if dtype is None else (torch.float32 if dtype == "fp32" else torch.bfloat16)
         self.dtype = dtype
 
+        self.remove_prompt_from_stream = remove_prompt_from_stream
         self.load_in_4bit = load_in_4bit
         self.quantization_config = (
             BitsAndBytesConfig(
@@ -92,7 +94,11 @@ class LocalLLM(LLM):
         if isinstance(messages[0], (list, tuple)) or hasattr(messages[0], "messages"):
             raise TypeError("chat_stream does not support batched messages.")
 
-        streamer = TextIteratorStreamer(self.tokenizer)
+        streamer = TextIteratorStreamer(
+            self.tokenizer,
+            skip_prompt=self.remove_prompt_from_stream,
+            skip_special_tokens=self.remove_prompt_from_stream,
+        )
         encodeds = self.tokenizer.apply_chat_template(
             messages,
             return_tensors="pt",
@@ -102,12 +108,17 @@ class LocalLLM(LLM):
             return_dict=True,
         )
         model_inputs = encodeds.to(self.device)
-        generation_kwargs=dict(**model_inputs, **self.sampling_parameters, pad_token_id=self.tokenizer.pad_token_id, streamer=streamer)
+        generation_kwargs = dict(
+            **model_inputs,
+            **self.sampling_parameters,
+            pad_token_id=self.tokenizer.pad_token_id,
+            streamer=streamer,
+        )
         from threading import Thread
+
         thread = Thread(target=self.model.generate, kwargs=generation_kwargs)
         thread.start()
         return streamer
-
 
     def _check_installation(self) -> None:
         if AutoModelForCausalLM is None or AutoTokenizer is None:

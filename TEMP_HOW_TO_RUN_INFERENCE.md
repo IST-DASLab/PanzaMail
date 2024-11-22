@@ -74,5 +74,5 @@ For some reason, there may be some errors when trying to create the Ollama model
     PARAMETER num_predict 1024
     ```
     The sampling parameters (where we specify the temperature) are optional.
-2. Create the model with Ollama - To do so, write execute the following command in the terminal `ollama create [name_of_model] -f [path_to_model]`. If successful, you will be able to see that the model has been successfully created with `ollama list`.
+2. Create the model with Ollama - To do so, write execute the following command in the terminal `ollama create [name_of_model] -f [path_to_modelfile]`. If successful, you will be able to see that the model has been successfully created with `ollama list`.
 3. Run the Panza runner as before! Since the model has now been created, the Panza script will be able to pick this up and use the created model for inference.

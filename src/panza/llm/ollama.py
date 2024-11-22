@@ -12,7 +12,14 @@ except ImportError:
 
 
 class OllamaLLM(LLM):
-    def __init__(self, name: str, gguf_file: str, sampling_parameters: Dict, overwrite_model: bool):
+    def __init__(
+        self,
+        name: str,
+        gguf_file: str,
+        sampling_parameters: Dict,
+        overwrite_model: bool,
+        remove_prompt_from_stream: bool,
+    ):
         """
         Loads and serves the model from the GGUF file into Ollama with the given name and sampling parameters.
         """
@@ -20,6 +27,8 @@ class OllamaLLM(LLM):
         self.gguf_file = gguf_file
         self.sampling_parameters = sampling_parameters
         self.overwrite_model = overwrite_model
+        self.remove_prompt_from_stream = remove_prompt_from_stream  # Ollama removes prompt for us so this is stored to match with signature.
+
         if not self._is_ollama_running():
             self._start_ollama()
 
