@@ -5,5 +5,5 @@ _target_: panza.llm.TransformersLLM
 name: ${checkpoint}
 checkpoint: ${checkpoint}
 device: "cuda"
-dtype: "fp32"
+dtype: "bf16"
 load_in_4bit: false
