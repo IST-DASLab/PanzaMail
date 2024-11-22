@@ -126,10 +126,13 @@ class PanzaJSON:
                 if use_thread:
                     instructions = list(zip(prompts, threads))
                 else:
-                    instructions = list(zip(prompts, [None] * len(prompts)))
+                    instructions = list(zip(prompts, [[]] * len(prompts)))
 
                 outputs, full_prompts = self.writer.run_batch(
-                    [EmailInstruction(user_input) for user_input in instructions],
+                    [
+                        EmailInstruction(user_input[0], thread=user_input[1])
+                        for user_input in instructions
+                    ],
                     return_prompt=True,
                 )
 

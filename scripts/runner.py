@@ -38,12 +38,19 @@ def set_latest_model(cfg: DictConfig) -> None:
 @hydra.main(version_base="1.1", config_path="../configs", config_name="panza_writer")
 def main(cfg: DictConfig) -> None:
     LOGGER.info("Starting Panza Writer")
+    # Add value from interfaces into writer config. We want the interface to choose whether the prompt is to be returned or not.
+    if "remove_prompt_from_stream" in cfg.interfaces:
+        OmegaConf.set_struct(cfg, False)
+        cfg.writer.llm.remove_prompt_from_stream = cfg.interfaces.remove_prompt_from_stream
+        del cfg.interfaces.remove_prompt_from_stream
+        OmegaConf.set_struct(cfg, True)
     LOGGER.info("Configuration: \n%s", OmegaConf.to_yaml(cfg, resolve=True))
 
     # Rename config keys to follow class structure
     rename_config_keys(cfg)
     # Find the latest checkpoint, if requested.
-    set_latest_model(cfg)
+    if cfg.checkpoint == "latest":
+        set_latest_model(cfg)
 
     # Instantiate Panza writer
     writer: PanzaWriter = hydra.utils.instantiate(cfg.writer)

@@ -7,3 +7,4 @@ checkpoint: ${checkpoint}
 device: "cuda"
 dtype: "fp32"
 load_in_4bit: false
+remove_prompt_from_stream: false

@@ -74,7 +74,6 @@ log = logging.getLogger(__name__)
 
 
 def validate_config(cfg: DictConfig):
-
     """Validates compatible model and dataloader selection."""
     loaders = [cfg.train_loader]
     if "eval_loader" in cfg:
@@ -422,7 +421,7 @@ def main(cfg: DictConfig) -> Trainer:
     )
     dist.initialize_dist(get_device(None), timeout=dist_timeout)
 
-    save_merged_model: bool = pop_config(cfg, "save_merged_model", False) 
+    save_merged_model: bool = pop_config(cfg, "save_merged_model", False)
 
     # Get global and device batch size information from distributed/single node setting
     cfg = update_batch_size_info(cfg)
@@ -896,10 +895,8 @@ def main(cfg: DictConfig) -> Trainer:
     if save_merged_model:
         path_to_save = os.path.join(hf_save_path, run_name, "merged")
         model = model.model.merge_and_unload()
-        model.params = model.to_bf16(model.params)
         model.save_pretrained(path_to_save)
         tokenizer.save_pretrained(path_to_save)
-
 
     log.info("Done.")
     return trainer
