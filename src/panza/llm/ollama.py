@@ -12,14 +12,14 @@ except ImportError:
 
 
 class OllamaLLM(LLM):
-    def __init__(self, name: str, gguf_file: str, sampling_parameters: Dict):
+    def __init__(self, name: str, gguf_file: str, sampling_parameters: Dict, overwrite_model: bool):
         """
         Loads and serves the model from the GGUF file into Ollama with the given name and sampling parameters.
         """
         super().__init__(name, sampling_parameters)
         self.gguf_file = gguf_file
         self.sampling_parameters = sampling_parameters
-
+        self.overwrite_model = overwrite_model
         if not self._is_ollama_running():
             self._start_ollama()
 
@@ -43,10 +43,16 @@ class OllamaLLM(LLM):
     def _is_model_loaded(self) -> bool:
         for model in ollama.list()["models"]:
             # model name is everything before the colon
-            name = model["name"].split(":")[0]
+            name = model["model"].split(":")[0]
             if name == self.name:
-                print(f'Model {self.name} already exists; not recreating')
-                return True
+                if self.overwrite_model:
+                    print(
+                        f"Model {self.name} already exists, but we are deleting the old copy and creating a new on."
+                    )
+                    ollama.delete(model=name)
+                else:
+                    print(f"Model {self.name} already exists; not recreating")
+                    return True
         return False
 
     def _make_modelfile_parameters(self) -> str:
