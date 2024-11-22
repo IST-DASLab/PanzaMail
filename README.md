@@ -201,6 +201,7 @@ CUDA_VISIBLE_DEVICES=X ./train_rosa.sh finetuning.lr=1e-6 finetuning.rosa_lr=1e-
 
 
 ## :microscope: Advanced usage
+- [Inference on CPU with Ollama](./scripts/README.md#cpu-inference-with-ollama)
 - [Data Preparation Guide](./scripts/README.md#data-guide)
 - [Hyper-Parameter Tuning Guide](./scripts/README.md#hyper-parameter-tuning-guide)
 - [Prompt Preambles Tutorial](prompt_preambles/README.md)
