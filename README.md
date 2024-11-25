@@ -194,6 +194,7 @@ CUDA_VISIBLE_DEVICES=X ./train_rosa.sh finetuning.lr=1e-6 finetuning.rosa_lr=1e-
 - To run Panza after a full training run, try something like `CUDA_VISIBLE_DEVICES=0 ./runner.sh user=USERNAME interfaces=cli writer/llm=transformers`.
 - To run Panza after a RoSA or LoRA training run, replace `writer/llm=transformers` with `writer/llm=peft` TODO Armand: can we fix this? 
 
+<img src="panza_ext.gif" width="600" height="600"/>
 
 :email: **Have fun with your new email writing assistant!** :email:
 
