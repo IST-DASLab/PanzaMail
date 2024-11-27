@@ -1,0 +1,2 @@
+_target_: panza.interface.PanzaGUI
+remove_prompt_from_stream: true

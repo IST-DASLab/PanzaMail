@@ -1,0 +1,77 @@
+wandb_disabled: true # We assume that wandb is disabled unless the user has logged on.
+
+max_seq_len: 512
+global_seed: ${seed}
+
+load_path:  # set via bash script to be absolute path to your sparse checkpoint
+precision: amp_bf16
+hf_save_path: ${checkpoint_dir}/models
+
+eval_interval: 1
+
+global_train_batch_size: 8
+device_train_microbatch_size: 1
+device_eval_batch_size: 1
+
+run_name: # If left blank, it will be generated based on configs
+
+model:
+  name: hf_causal_lm
+  pretrained: true
+  pretrained_model_name_or_path: ${finetuning.model_name_or_path}
+  max_seq_len: ${finetuning.max_seq_len}
+  output_hidden_states: true
+  weight_bias_dtype: ${model_precision}
+  compute_dtype: bf16
+
+tokenizer:
+  name: ${finetuning.model_name_or_path}
+  kwargs:
+    model_max_length: ${finetuning.max_seq_len}
+
+train_loader:
+  name: finetuning
+  dataset:
+    hf_name: json
+    split: train
+    hf_kwargs:
+      data_files: ${user.data_dir}/train.jsonl
+    preprocessing_fn: panza.finetuning.preprocessing:panza_preprocessing_function
+    max_seq_len: ${finetuning.max_seq_len}
+    allow_pad_trimming: false
+    decoder_only_format: true
+    shuffle: true
+  drop_last: false
+  num_workers: 8
+  pin_memory: false
+  prefetch_factor: 2
+  persistent_workers: true
+  timeout: 0
+
+scheduler:
+  name: linear_decay_with_warmup
+  t_warmup: 20ba
+  alpha_f: 0
+
+optimizer:
+  name: decoupled_adamw
+  lr: 1e-5
+  betas:
+    - 0.9
+    - 0.999
+  eps: 1.0e-8
+  weight_decay: 0.0
+
+progress_bar: false
+log_to_console: true
+console_log_interval: 1ba
+
+callbacks:
+  speed_monitor:
+    window_size: 10
+  lr_monitor: { }
+  memory_monitor: { }
+  runtime_estimator: { }
+
+loggers:
+  wandb: { }

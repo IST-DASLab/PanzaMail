@@ -1,0 +1,3 @@
+_target_: panza.prompting.SummarizationPromptBuilder
+
+summarization_prompt: ${load_preamble:${panza_workspace}/prompt_preambles/summarization_prompt.txt}

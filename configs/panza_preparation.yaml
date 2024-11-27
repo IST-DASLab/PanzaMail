@@ -1,0 +1,25 @@
+defaults:
+  - base
+  - writer: summary
+  - writer/prompting/retriever/faiss@retriever
+
+batch_size: 8
+
+email_dump_path: ${user.data_dir}/Sent.mbox
+cleaned_emails_path: ${user.data_dir}/${user.username}_clean.jsonl
+discarded_emails_dir: ${user.data_dir}/${user.username}/discarded_emails
+summarized_emails_path: ${user.data_dir}/${user.username}_clean_summarized.jsonl
+
+rag_db_dir: ${user.data_dir}
+
+checkpoint: "microsoft/Phi-3-mini-4k-instruct" 
+force_extract_clean_emails: false # If false, data will not be recreated if it already exists.
+
+ # Parameters for train-test split, if required.
+test_split: 0.
+split_type: random # Options are 'random', 'chronological'.
+
+# Parameters for RAG database.
+rag_embedding_chunk_size: 3000
+rag_embedding_chunk_overlap: 3000
+rag_embedding_model: "sentence-transformers/all-mpnet-base-v2"

@@ -1,0 +1,13 @@
+defaults:
+  - retriever: faiss
+
+_target_: panza.prompting.EmailPromptBuilder
+
+system_preamble: ${load_preamble:${user.system_preamble_path}}
+user_preamble: ${load_user_preamble:${user.user_preamble_path}}
+rag_preamble: ${load_preamble:${user.rag_preamble_path}}
+thread_preamble: ${load_preamble:${user.thread_preamble_path}}
+
+number_rag_emails: 0
+rag_relevance_threshold: 0.2
+number_thread_emails: 0

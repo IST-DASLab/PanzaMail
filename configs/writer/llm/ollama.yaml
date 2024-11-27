@@ -1,0 +1,8 @@
+defaults:
+  - sampling: random
+
+_target_: panza.llm.OllamaLLM
+name: "custom"
+gguf_file: "custom.gguf"
+remove_prompt_from_stream: false
+overwrite_model: false

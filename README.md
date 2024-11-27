@@ -4,8 +4,6 @@
 
 #  Panza: A personal email assistant, trained and running on-device
 
-
-
 ##  What is Panza?
 
 
@@ -60,29 +58,19 @@ The overall structure of Panza is as follows:
 
 ## Installation
 
-### Conda
-1. Make sure you have a version of [conda](https://docs.anaconda.com/free/miniconda/miniconda-install/) installed.
-2. Run `source prepare_env.sh`. This script will create a conda environment named `panza` and install the required packages.
-
-### Docker
-As an alternative to the conda option above, you can run the following commands to pull a docker image with all the dependencies installed.
+### Environment.
+We tested Panza using python 3.10. If you are running a different version, you can either install it directly or, for instance, using [miniconda](https://docs.anaconda.com/free/miniconda/miniconda-install/):
+```bash
+conda create -n panza python=3.10 -y
+conda activate panza
 ```
-docker pull istdaslab/panzamail
+Then, Install the required packages:
+``` bash
+pip install .
 ```
-
-or alternatively, you can build the image yourself:
-```
-docker build . -f Dockerfile -t istdaslab/panzamail
-```
-
-Then run it with:
-```
-docker run -it --gpus all istdaslab/panzamail /bin/bash
-```
-
-In the docker you can activate the `panza` environment with:
-```
-micromamba activate panza
+If you want to also finetune models using Panza, you will need to install additional packages:
+``` bash
+pip install .[training]
 ```
 
 ## :rocket: Getting started
@@ -115,19 +103,30 @@ To quickly get started with building your own personalized email assistant, foll
 At the end of this step you should have the downloaded emails placed inside `data/Sent.mbox`.
 
 <!-- **Step 0: Environment configuration** -->
+
 ### Step 1: Environment configuration
 
 <!-- 🎛️ -->
-Panza is configured through a set of environment variables defined in `scripts/config.sh` and shared along all running scripts.
+Panza is configured through a set of yaml configurations defined in `configs/`. There is a single high-level config under `configs/base.yaml`, and the rest are organized under the main functionalities of the code.
+Note that these task-specific configs can, in some cases, be used to override base configs.
+ Specific use cases, such as hyperparameter tuning, are covered in more detail in `scripts/README.md`.
+
+1. Data preparation: `configs/data_preparation.yaml`. Additionally, a custom user config must be created under `config/users/` (see below).
+1. Finetuning: the main config is in `configs/panza_finetuning.yaml` and the method-specific ones are in `configs/finetuning/`
+1. Serving: Serving consists of two parts - a serving infrastructure (that we call 'writer') that runs the LLM and so converts prompts to Panza outputs, and an `interface`, which presents the outputs in a useful form - through a command-line interface, a web interface, a gmail client, or in a bulk `.json` format (useful for evaluation). The configs for serving are in `panza_writer.yaml`, and for the interfaces, under `configs/interfaces`.
 
 <!-- 💬 -->
-The LLM prompt is controlled by a set of `prompt_preambles` that give the model more insight about its role, the user and how to reuse existing emails for *Retrieval-Augmented Generation (RAG)*. See more details in the [prompting section](prompt_preambles/README.md).
-
+These scripts are described in more detail in `scripts/README.md`, but a few customizations need to happen immediately.
 :warning: Before continuing, make sure you complete the following setup:
-  - Modifiy the environment variable `PANZA_EMAIL_ADDRESS` inside `scripts/config.sh` with your own email address.
-  - Modifiy `prompt_preambles/user_preamble.txt` with your own information. If you choose, this can even be empty.
+- Perform the following modifications on `users/default.yaml` directly. If running Panza for multiple users, copy this file to, for example, `users/jen.yaml` and specify the user in Panza training commands.
+- In the user config, set the email address and username. The email address should be the sender address in the exported emails. (Panza uses this to edit out responses and other emails sent by a different author in the `.mbox` dump.). The username does not have to link to the email itself - it is simply used as a name for the various data files that will come out of the data preparation process. A handy way to set this is if you set it to be the output of the `whoami` call in your shell.
+- Modify the personal prompt in `prompt_preambles/user_preamble.txt` to include some basic information about yourself that Panza can use to customize your emails with your correct full name, address, phone number, etc.
+  
+
+Additionally, please perform the following login steps to be able to download the base model. 
   - Login to Hugging Face to be able to download pretrained models: `huggingface-cli login`.
-  - [Optional] Login to Weights & Biases to log metrics during training: `wandb login`. Then, set `PANZA_WANDB_DISABLED=False` in `scripts/config.sh`.
+  - [Optional] Login to Weights & Biases to log metrics during training: `wandb login`. Then, set `wandb_disabled=false` in `configs/finetuning/base.yaml`.
+
 
 You are now ready to move to `scripts`.
 ``` bash
@@ -137,68 +136,111 @@ cd scripts
 ### Step 2: Extract emails
 <!-- **Step 2: Extract emails** -->
 
-1. Run `./extract_emails.sh`. This extracts your emails in text format to `data/<username>_clean.jsonl` which you can manually inspect.
-
-2. If you wish to eliminate any emails from the training set (e.g. containing certain personal information), you can simply remove the corresponding rows.
-
-### Step 3: Prepare dataset
-<!-- **Step 3: Prepare dataset** -->
-
-1. Simply run `./prepare_dataset.sh`.<details>
+Run `CUDA_VISIBLE_DEVICES=X ./prepare_data.sh`.<details>
     <summary> This scripts takes care of all the prerequisites before training (expand for details). </summary>
 
+    - Extracts your emails in text format to `data/<username>_clean.jsonl` which you can manually inspect.
     - Creates synthetic prompts for your emails as described in the [data playback](#film_projector-step-1-data-playback) section. The results are stored in `data/<username>_clean_summarized.jsonl` and you can inspect the `"summary"` field.
     - Splits data into training and test subsets. See `data/train.jsonl` and `data/test.jsonl`.
     - Creates a vector database from the embeddings of the training emails which will later be used for *Retrieval-Augmented Generation (RAG)*. See `data/<username>.pkl` and `data/<username>.faiss`.
-    </details>
+</details>
 
-### Step 4: Train a LLM on your emails
-<!-- **Step 4: Train a LLM on your emails** -->
+**NB**: if you did not change the default configuration in `user/default.yaml` to reflect your particulars but rather created a new file, you need to add the additional flag to the above command where you specify `user=x` where your config file was named `x.yaml`.
+
+<details>
+    <summary> FAQs. </summary>
+    When running the above script, you may encounter an <code>OutOfMemoryError</code>. If this is the case, you can either:
+    <ol>
+      <li> Reduce the batch size for the data processing step. This can be found in <code>configs/panza_preparation.yaml</code>.
+      <li> Move to a machine that has more memory.
+    </ol>
+  </details>
+
+
+### Step 3: Train a LLM on your emails
+<!-- **Step 3: Train a LLM on your emails** -->
 
 We currently support `LLaMA3-8B-Instruct` and `Mistral-Instruct-v0.2` LLMs as base models; the former is the default, but we obtained good results with either model.   
 
 1. [Recommended] For parameter efficient fine-tuning, run `./train_rosa.sh`.  
 If a larger GPU is available and full-parameter fine-tuning is possible, run `./train_fft.sh`.
 
-2. We have prepopulated the training scripts with parameter values that worked best for us. We recommend you try those first, but you can also experiment with different hyper-parameters by passing extra arguments to the training script, such as `LR`, `LORA_LR`, `NUM_EPOCHS`. All the trained models are saved in the `checkpoints` directory.
+2. We have prepopulated the training configs with parameter values that worked best for us. We recommend you try those first, but you can also experiment with different hyper-parameters by passing extra arguments to the training script, such as `lr`, `lora_lr`, `num_epochs`. All the trained models are saved in the `checkpoints` directory.
 
 Examples:
 ``` bash
-./train_rosa.sh                                   # Will use the default parameters.
+CUDA_VISIBLE_DEVICES=X ./train_rosa.sh                                   # Will use the default parameters.
 
-./train_rosa.sh LR=1e-6 LORA_LR=1e-6 NUM_EPOCHS=7 # Will override LR, LORA_LR, and NUM_EPOCHS.
+CUDA_VISIBLE_DEVICES=X ./train_rosa.sh finetuning.lr=1e-6 finetuning.rosa_lr=1e-6 finetuning.max_duration=7ep
 ```
+
+On a smaller GPU, it may be necessary to further train in lower precision (QRoSA). This can be run as follows:
+
+``` bash
+./train_rosa.sh finetuning.precision=amp_bf16 finetuning.model.weight_bias_dtype=4bit
+```
+
+<details>
+    <summary> FAQs. </summary>
+    The bash scripts that are used to execute the finetuning procedure assume by default that your username is what is returned by the <code>whoami</code> command. This is used to locate the name of the user configs inside the <code>configs/user</code> directory as above. If you directly modified <code>default.yaml</code>, or created another yaml file where the name of that file does not match with the output of <code>whoami</code>, there will be an error. This is an easy fix. You can either:
+    <ol>
+      <li> Change the name of the yaml file to be the output of <code>whoami</code>.
+      <li> You can override the username manually when you launch the bash script by adding <code>user=x</code> where <code>x</code> is the name of the yaml file you created. For example: <code>./train_rosa.sh user=alonso</code>
+    </ol>
+  <br>
+  If you wish to add <code>CUDA_VISIBLE_DEVICES</code> to specify a specific GPU, please add this in the shell script directly by <code>export CUDA_VISIBLE_DEVICES=x</code> where <code>x</code> is the ID of the GPU you wish to use.
+  <br><br>
+  A known issue is that when you fine-tune your model with RAG, there can be a case when the tokenization of the dataset seemingly hangs. This is due to a known bug with with HF's <code>map</code> function where <code>n_proc>1</code>. To alleviate this issue, you can set <code>torch.set_num_threads(1)</code> in <code>src/panza/finetuning/train.py</code> or set the equivalent parameter in <code>configs/finetuning/rosa.yaml</code>.
+  </details>
+
+
+
 
 ### Step 5: Launch Panza!
 <!-- **Step 5: Launch Panza!** -->
 
-1. Run `./run_panza_gui.sh MODEL=<path-to-your-trained-model>` to serve the trained model in a friendly GUI.  
-Alternatively, if you prefer using the CLI to interact with Panza, run `./run_panza_cli.sh` instead.
+- To run Panza after a full training run, run a command like `CUDA_VISIBLE_DEVICES=0 ./runner.sh user=USERNAME interfaces=cli writer/llm=transformers checkpoint=latest`.
+- To run Panza after a RoSA or LoRA training run, replace `writer/llm=transformers` with `writer/llm=peft`
 
-You can experiment with the following arguments:
-- If `MODEL` is not specified, it will use a pretrained `Meta-Llama-3-8B-Instruct` model by default, although Panza also works with `Mistral-7B-Instruct-v2`. Try it out to compare the syle difference!
-- To disable RAG, run with `PANZA_DISABLE_RAG_INFERENCE=1`.
+### :new: Use Panza in Google Chrome directly with your Gmail!
+In addition to the Panza package itself, we have also created a tool that will allow you to use Panza directly within your Gmail session. We have published
+this extension on [Google Chrome here](https://chromewebstore.google.com/detail/panzaextension/njmkmdbgneiaoahngollkmejoinnaicm?authuser=4&hl=en). Here is a written guide on how to get this setup below.
+* Launch the Panza web server: Instead of using the cli as an interface above, we execute the following command: `CUDA_VISIBLE_DEVICES=0 API_KEYS=panza_beta ./runner.sh user=USERNAME interfaces=web writer/llm=peft checkpoint=latest`.
+  1. We have to choose an API key that the server will use. Since the browser extension we have created is a beta release, the API_KEY by default is `panza_beta`.
+  2. Executing this script spins up a web server on port 5001 by default. The port can be changed in the `configs/interfaces/web.json` file. However, our browser extension sends API requests to `localhost:5001` only in this beta version.
+* [Optionally add port forwarding] If you are not running the Panza web server on the same device where Google Chrome is installed, you will be unable to make requests to a server with a reference to `localhost`. To correctly use the server, you will have to enable port forwarding from the remote machine to your local device. This is done by VSCode automatically if you are SSH'ed into a remote server, and spin up Panza there.
+* Install the [Google Chrome extension here](https://chromewebstore.google.com/detail/panzaextension/njmkmdbgneiaoahngollkmejoinnaicm?authuser=4&hl=en).
+Now we that we have setup all the necessary pieces to use Panza, you can use it directly within your Gmail. To do so, simply write a prompt in the main message box, and click the Panza icon in the tool bar (as seen in the GIF below), and let Panza take care of the rest!
 
-Example:
-``` bash
-./run_panza_gui.sh \
-  MODEL=/local/path/to/this/repo/checkpoints/models/panza-rosa_1e-6-seed42_7908 \
-  PANZA_DISABLE_RAG_INFERENCE=0  # this is the default behaviour, so you can omit it
-```
+<img src="panza_ext.gif" width="600" height="600"/>
 
 :email: **Have fun with your new email writing assistant!** :email:
 
 <!-- For in depth customization of each step of the pipeline, refer to ... -->
 
-## :cloud: Try out Panza in Google Colab
-
-- You can run Panza in a Google Colab instance [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/IST-DASLab/PanzaMail/blob/main/notebooks/panza_colab.ipynb).
-
 
 ## :microscope: Advanced usage
+- [Inference on CPU with Ollama](./scripts/README.md#cpu-inference-with-ollama)
 - [Data Preparation Guide](./scripts/README.md#data-guide)
 - [Hyper-Parameter Tuning Guide](./scripts/README.md#hyper-parameter-tuning-guide)
 - [Prompt Preambles Tutorial](prompt_preambles/README.md)
+
+## :woman_technologist: Contributing
+If you liked our work and want to contribute to improve the system, please feel free to do so! Make a _fork_ of our repository and once you have made your changes, submit a pull request so that we can review!
+
+One thing to mention: we want to make sure that we all adhere to the same coding standards, so we have added Black, a code formatter, as a prehook. To ensure that all your files are formatted with Black, do the following:
+
+1. Install the necessary dependencies
+```
+pip install .[contributing]
+```
+
+2. Run the precommit command
+```
+pre-commit install
+```
+
+3. Continue adding code as usual. All your code will be formatted by Black before commiting!
 
 ## Privacy Statement
 The goal of Panza is to give users full control of their data and models trained on it. As such, no part of Panza, including the Chrome/GMail plugin collects any information about its users, outside of the normal summary statistics collected by Github and Google (such as the number of stars/forks/downloads). If you choose to run any part of Panza on a hosted service, e.g., on Amazon Web Services or Google Colab, we take no responsibility for any data collection or data breaches that may occur. Additionally, running the Panza web client or the GUI interface (via Gradio) risks providing unauthorized access to the models. Please use at your own risk.
@@ -207,7 +249,7 @@ The goal of Panza is to give users full control of their data and models trained
 
 Panza was conceived by Nir Shavit and Dan Alistarh and built by the [Distributed Algorithms and Systems group](https://ist.ac.at/en/research/alistarh-group/) at IST Austria. The contributors are (in alphabetical order):
 
-Dan Alistarh, Eugenia Iofinova, Eldar Kurtic, Ilya Markov, Armand Nicolicioiu, Mahdi Nikdan, Andrei Panferov, and Nir Shavit.
+Dan Alistarh, Eugenia Iofinova, Andrej Jovanovic, Eldar Kurtic, Ilya Markov, Armand Nicolicioiu, Mahdi Nikdan, Andrei Panferov, Nir Shavit, and Sean Yang.
 
 Contact: dan.alistarh@ist.ac.at
 

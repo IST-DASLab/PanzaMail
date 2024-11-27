@@ -36,9 +36,7 @@ def create_prompt(
 
     if thread_emails:
         assert thread_preamble, "Thread preamble format must be provided if thread is provided."
-        thread_prompt = _create_threading_preamble(
-            thread_preamble, thread_emails
-        ).strip()
+        thread_prompt = _create_threading_preamble(thread_preamble, thread_emails).strip()
     else:
         thread_prompt = ""
 
@@ -85,14 +83,15 @@ def _create_rag_context_from_emails(emails: List[Email]) -> Text:
 
     rag_context = ""
     for email in emails:
-        rag_context += f"SUBJECT: {email.subject}\n" f"E-MAIL CONTENT:\n{email.email}\n\n---\n\n"
+        rag_context += (
+            # f"SUBJECT: {email.metadata['subject']}\n"  # TODO(armand): Handle subject metadata
+            f"E-MAIL CONTENT:\n{email.page_content}\n\n---\n\n"
+        )
 
     return rag_context
 
 
-def _create_threading_preamble(
-    threading_preamble_format: Text, thread: List[Text]
-) -> Text:
+def _create_threading_preamble(threading_preamble_format: Text, thread: List[Text]) -> Text:
     threading_context = _create_threading_context(thread)
     return threading_preamble_format.format(threading_context=threading_context)
 

@@ -1,0 +1,55 @@
+[project]
+name = "panza_mail"
+version = "2024.08.14"
+description = "A personal email assistant, trained and running on-device."
+dependencies = [
+    "torch==2.2.2",
+    "ollama",
+    "omegaconf",
+    "fastapi",
+    "uvicorn",
+    "pydantic",
+    "python-dotenv",
+    "hydra-core",
+    "langchain",
+    "langchain-community",
+    "sentence-transformers",
+    "faiss-cpu",
+    "gradio",
+    "mauve-text",
+    "evaluate",
+    "torchmetrics",
+    "nltk",
+    "accelerate",
+]
+
+[project.optional-dependencies]
+training = [
+    "langdetect",
+    "fire",
+    "gradio",
+    "cmake",
+    "packaging",
+    "llm-foundry@git+https://github.com/IST-DASLab/llm-foundry@panza-release",
+    "peft@git+https://github.com/IST-DASLab/peft-rosa.git@grad_quant_looser_versioning",
+    "spops-sm-80",
+]
+contributing = [
+    "pre-commit",
+]
+
+[build-system]
+requires = ["setuptools >= 61.0.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.black]
+line-length = 100
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+
+[dev-dependencies]
+pytest = "*"

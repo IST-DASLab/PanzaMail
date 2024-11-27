@@ -1,0 +1,9 @@
+input_file: ${panza_workspace}/data/test.jsonl
+batch_size: 8
+use_thread: false
+responses_per_prompt: 1
+checkpoint: ${checkpoint}
+panza_workspace: ${panza_workspace}
+compute_metrics: true
+username: ${user.username}
+_target_: panza.interface.PanzaJSON

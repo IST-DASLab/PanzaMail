@@ -1,0 +1,5 @@
+_target_: panza.retriever.FaissRetriever
+db_path: ${user.data_dir}
+index_name: ${user.username}
+embedding_model: ${embedding_model}
+device: "cpu"

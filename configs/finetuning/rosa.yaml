@@ -1,0 +1,33 @@
+defaults:
+  - base
+
+max_duration: 5ep
+lr: 1e-5
+batch_size: 8
+eval_interval: 1
+seed: ${seed}
+model_name_or_path: "ISTA-DASLab/Meta-Llama-3-8B-Instruct"
+save_merged_model: False
+
+rosa:
+  lora_lr: ${finetuning.lr}
+  lora_r: 8
+  spa_d: 0.01
+  lora_alpha: 16
+  target_modules: 'all-linear'
+  lora_dropout: 0.05
+  impl: auto
+  spa_store_transpose: true
+  rosa_dtype: bf16
+  spa_num_grads: 1
+  grad_acc_mode: mean_squared  # 'mean' or 'mean_squared': how to accumulate gradients
+  mask_load_path: #TODO
+  mask_save_path: #TODO
+  terminate_after_mask_generation: #TODO
+  schedule: #TODO
+  masks_only: true
+
+scheduler:
+  t_warmup: 8ba
+
+num_cpu_threads: 1

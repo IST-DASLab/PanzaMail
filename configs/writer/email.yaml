@@ -1,0 +1,5 @@
+defaults:
+  - llm: transformers
+  - prompting: email_prompting
+
+_target_: panza.writer.PanzaWriter

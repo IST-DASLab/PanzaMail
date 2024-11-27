@@ -23,7 +23,9 @@ TOP_K = 50
 
 
 class LLMSummarizer:
-    def __init__(self, model, dtype, temperature, top_k, top_p, summarization_prompt, load_in_4bit) -> None:
+    def __init__(
+        self, model, dtype, temperature, top_k, top_p, summarization_prompt, load_in_4bit
+    ) -> None:
         self.device = "cuda"
 
         if load_in_4bit:
@@ -31,24 +33,33 @@ class LLMSummarizer:
                 load_in_4bit=True,
                 bnb_4bit_compute_dtype=dtype,
                 bnb_4bit_use_double_quant=True,
-                bnb_4bit_quant_type='nf4',
+                bnb_4bit_quant_type="nf4",
             )
         else:
             quant_config = None
-        
+
         self.model = AutoModelForCausalLM.from_pretrained(
-            model, torch_dtype=dtype, device_map=self.device, quantization_config=quant_config, trust_remote_code=True
+            model,
+            torch_dtype=dtype,
+            device_map=self.device,
+            quantization_config=quant_config,
+            trust_remote_code=True,
         )
         self.tokenizer = AutoTokenizer.from_pretrained(
-            model, model_max_length=self.model.config.max_position_embeddings, trust_remote_code=True
+            model,
+            model_max_length=self.model.config.max_position_embeddings,
+            trust_remote_code=True,
         )
         self.tokenizer.padding_side = "left"
         self.tokenizer.pad_token = self.tokenizer.eos_token
         self.summarization_prompt = summarization_prompt
 
-        _, self.prompt_end_wrapper, _, self.response_end_wrapper = (
-            prompting.get_model_special_tokens(self.model.name_or_path)
-        )
+        (
+            _,
+            self.prompt_end_wrapper,
+            _,
+            self.response_end_wrapper,
+        ) = prompting.get_model_special_tokens(self.model.name_or_path)
 
         # Save sampling parameters
         self.temperature = temperature
@@ -138,8 +149,18 @@ def main():
     parser.add_argument("--path-to-emails", help="Path to the cleaned emails")
     parser.add_argument("--prompt-file", help="A path to file with prompt text")
     parser.add_argument("--batch-size", type=int, help="Inference batch size")
-    parser.add_argument("--load-in-4bit", default=False, action='store_true', help="Wheather to load the model in 4bit precision (BNB)")
-    parser.add_argument("--fp32", default=False, action='store_true', help="Whether to use FP32 precision for computation")
+    parser.add_argument(
+        "--load-in-4bit",
+        default=False,
+        action="store_true",
+        help="Wheather to load the model in 4bit precision (BNB)",
+    )
+    parser.add_argument(
+        "--fp32",
+        default=False,
+        action="store_true",
+        help="Whether to use FP32 precision for computation",
+    )
     args = parser.parse_args()
 
     assert args.path_to_emails.endswith(
@@ -164,7 +185,7 @@ def main():
     # Read emails
     with open(args.path_to_emails, "r") as f:
         lines = f.readlines()
-        json_lines = [json.loads(line.strip(',')) for line in lines]
+        json_lines = [json.loads(line.strip(",")) for line in lines]
         print(f"--> # emails = {len(json_lines)}")
 
     summarizer = LLMSummarizer(
@@ -174,7 +195,7 @@ def main():
         top_p=TOP_P,
         top_k=TOP_K,
         summarization_prompt=summarization_prompt,
-        load_in_4bit=args.load_in_4bit
+        load_in_4bit=args.load_in_4bit,
     )
 
     # Generate synthetic instructions

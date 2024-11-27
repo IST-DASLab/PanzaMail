@@ -1,0 +1,7 @@
+
+defaults:
+  - base
+  - finetuning: full
+  # For preprocessing (i.e., assembling the LLM prompt, inherit the defaults
+  # from the writer (the inference module).)
+  - writer/prompting/email_prompting@preprocessing.prompting

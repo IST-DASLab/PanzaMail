@@ -1,0 +1,10 @@
+defaults:
+  - sampling: random
+
+_target_: panza.llm.TransformersLLM
+name: ${checkpoint}
+checkpoint: ${checkpoint}
+device: "cuda"
+dtype: "bf16"
+load_in_4bit: false
+remove_prompt_from_stream: false
