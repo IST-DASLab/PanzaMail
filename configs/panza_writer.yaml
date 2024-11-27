@@ -2,10 +2,10 @@ defaults:
   - base
   - writer: email
   - interfaces:
+      - cli
       # - gui
-      # - cli
       # - web
-      - json
+      # - json
 
 # Either a full path to the checkpoint, or the 'latest' tag,
 # Which looks for the latest checkpoint in `checkpoint_dir`
