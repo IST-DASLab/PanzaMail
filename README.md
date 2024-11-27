@@ -145,7 +145,7 @@ Run `CUDA_VISIBLE_DEVICES=X ./prepare_data.sh`.<details>
     - Creates synthetic prompts for your emails as described in the [data playback](#film_projector-step-1-data-playback) section. The results are stored in `data/<username>_clean_summarized.jsonl` and you can inspect the `"summary"` field.
     - Splits data into training and test subsets. See `data/train.jsonl` and `data/test.jsonl`.
     - Creates a vector database from the embeddings of the training emails which will later be used for *Retrieval-Augmented Generation (RAG)*. See `data/<username>.pkl` and `data/<username>.faiss`.
-    </details>
+</details>
 **NB**: if you did not change the default configuration in `user/default.yaml` to reflect your particulars but rather created a new file, you need to add the additional flag to the above command where you specify `user=x` where your config file was named `x.yaml`.
 
 <details>
