@@ -30,7 +30,7 @@ training = [
     "gradio",
     "cmake",
     "packaging",
-    "llm-foundry@git+https://github.com/IST-DASLab/llm-foundry",
+    "llm-foundry@git+https://github.com/IST-DASLab/llm-foundry@panza-release",
     "peft@git+https://github.com/IST-DASLab/peft-rosa.git@grad_quant_looser_versioning",
     "spops-sm-80",
 ]
