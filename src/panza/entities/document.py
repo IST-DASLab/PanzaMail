@@ -53,7 +53,17 @@ class Email(Document):
             dictionary = copy.deepcopy(data)
         else:
             raise ValueError(f"Cannot deserialize data of type {type(data)}. Must be str or dict.")
-        dictionary["date"] = datetime.fromisoformat(dictionary["date"])
+
+        # For backward compatibility, backfill fields not present in V1 of the data.
+        if "subject" not in dictionary:
+            dictionary["subject"] = ""
+        if "thread" not in dictionary:
+            dictionary["thread"] = []
+
+        if "date" not in dictionary:  # Date was also missing in V1.
+            dictionary["date"] = datetime.min
+        else:
+            dictionary["date"] = datetime.fromisoformat(dictionary["date"])
         return cls(**dictionary)
 
     @staticmethod

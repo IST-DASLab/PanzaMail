@@ -6,9 +6,9 @@ defaults:
 batch_size: 8
 
 email_dump_path: ${user.data_dir}/Sent.mbox
-cleaned_emails_path: ${user.data_dir}/${user.username}_emails_clean.jsonl
+cleaned_emails_path: ${user.data_dir}/${user.username}_clean.jsonl
 discarded_emails_dir: ${user.data_dir}/${user.username}/discarded_emails
-summarized_emails_path: ${user.data_dir}/${user.username}_emails_clean_summarized.jsonl
+summarized_emails_path: ${user.data_dir}/${user.username}_clean_summarized.jsonl
 
 rag_db_dir: ${user.data_dir}
 
