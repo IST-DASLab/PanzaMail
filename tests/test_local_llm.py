@@ -37,6 +37,7 @@ def test_local_llm_init(local_llm_class: Type[LocalLLM], checkpoint: str):
         sampling_parameters={"do_sample": False, "max_new_tokens": 50},
         dtype="fp32",
         load_in_4bit=False,
+        remove_prompt_from_stream=False,
     )
     assert model is not None
     assert model.name == "local_llm"
@@ -70,6 +71,7 @@ def test_local_llm_generate(local_llm_class: Type[LocalLLM], checkpoint: str):
         sampling_parameters={"do_sample": False, "max_new_tokens": 50},
         dtype="fp32",
         load_in_4bit=False,
+        remove_prompt_from_stream=False,
     )
 
     messages = [{"role": "user", "content": "Write something."}]
@@ -102,6 +104,7 @@ def test_local_llm_generate_batch(local_llm_class: Type[LocalLLM], checkpoint: s
         sampling_parameters={"do_sample": False, "max_new_tokens": 50},
         dtype="fp32",
         load_in_4bit=False,
+        remove_prompt_from_stream=False,
     )
 
     messages = [
