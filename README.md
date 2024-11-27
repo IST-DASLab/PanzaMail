@@ -198,15 +198,26 @@ On a smaller GPU, it may be necessary to further train in lower precision (QRoSA
 ### Step 5: Launch Panza!
 <!-- **Step 5: Launch Panza!** -->
 
-- To run Panza after a full training run, run a command like `CUDA_VISIBLE_DEVICES=0 ./runner.sh user=USERNAME interfaces=cli writer/llm=transformers model=latest`.
+- To run Panza after a full training run, run a command like `CUDA_VISIBLE_DEVICES=0 ./runner.sh user=USERNAME interfaces=cli writer/llm=transformers checkpoint=latest`.
 - To run Panza after a RoSA or LoRA training run, replace `writer/llm=transformers` with `writer/llm=peft`
+
+<!-- For in depth customization of each step of the pipeline, refer to ... -->
+### :new: Use Panza in Google Chrome directly with your Gmail!
+In addition to the Panza package itself, we have also created a tool that will allow you to use Panza directly within your Gmail session. We have published
+this extension on [Google Chrome here](https://chromewebstore.google.com/detail/panzaextension/njmkmdbgneiaoahngollkmejoinnaicm?authuser=4&hl=en). Here is a written guide on how to get this setup below.
+
+* Launch the Panza web server: Instead of using the cli as an interface above, we execute the following command: `CUDA_VISIBLE_DEVICES=0 API_KEYS=panza_beta ./runner.sh user=USERNAME interfaces=web writer/llm=peft checkpoint=latest`.
+
+  1. We have to choose an API key that the server will use. Since the browser extension we have created is a beta release, the API_KEY by default is `panza_beta`.
+  2. Executing this script spins up a web server on port 5001 by default. The port can be changed in the `configs/interfaces/web.json` file. However, our browser extension sends API requests to `localhost:5001` only in this beta version.
+* [Optionally add port forwarding] If you are not running the Panza web server on the same device where Google Chrome is installed, you will be unable to make requests to a server with a reference to `localhost`. To correctly use the server, you will have to enable port forwarding from the remote machine to your local device. This is done by VSCode automatically if you are SSH'ed into a remote server, and spin up Panza there.
+* Install the [Google Chrome extension here](https://chromewebstore.google.com/detail/panzaextension/njmkmdbgneiaoahngollkmejoinnaicm?authuser=4&hl=en).
+
+Now we that we have setup all the necessary pieces to use Panza, you can use it directly within your Gmail. To do so, simply write a prompt in the main message box, and click the Panza icon in the tool bar (as seen in the GIF below), and let Panza take care of the rest!
 
 <img src="panza_ext.gif" width="600" height="600"/>
 
 :email: **Have fun with your new email writing assistant!** :email:
-
-<!-- For in depth customization of each step of the pipeline, refer to ... -->
-
 
 ## :microscope: Advanced usage
 - [Inference on CPU with Ollama](./scripts/README.md#cpu-inference-with-ollama)
