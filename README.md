@@ -23,7 +23,7 @@ Its main features are as follows:
 </div>
 
 
-## TODO: Prerequisites
+## Prerequisites
 - Your emails, exported to `mbox` format (see tutorial below).
 - A computer, preferably with a NVIDIA GPU with at least 24 GiB of memory (alternatively, check out [running in Google Colab](#cloud-try-out-panza-in-google-colab)).
 - A Hugging Face [account](https://huggingface.co/login) to download the models (free of charge).
@@ -76,7 +76,7 @@ pip install .
 pip install .[training]
 ```
 
-## TODO: :rocket: Getting started
+## :rocket: Getting started
 
 To quickly get started with building your own personalized email assistant, follow the steps bellow:
 
@@ -111,11 +111,11 @@ At the end of this step you should have the downloaded emails placed inside `dat
 <!-- 🎛️ -->
 Panza is configured through a set of yaml configurations defined in `configs/`. There is a single high-level config under `configs/base.yaml`, and the rest are organized under the main functionalities of the code.
 Note that these task-specific configs can, in some cases, be used to override base configs.
- Specific use cases, such as hyperparameter tuning, are covered in more detail in `scripts/README.md`. (TODO jen: write this up.)
+ Specific use cases, such as hyperparameter tuning, are covered in more detail in `scripts/README.md`.
 
 1. Data preparation: `configs/data_preparation.yaml`. Additionally, a custom user config must be added under `config/users/` (see below).
 1. Finetuning: the main config is in `configs/panza_finetuning.yaml` and the method-specific ones are in `configs/finetuning/`
-1. Serving: Serving consists of two parts - a serving infrastructure (that we call 'writer') that runs the LLM and so converts prompts to Panza outputs, and an `interface`, which presents the outputs in a useful form - through a command-line interface, a web interface, a gmail client (TODO:Sean), or in a bulk `.json` format (useful for evaluation). The configs for serving are in `panza_writer.yaml`, and for the interfaces, under `configs/interfaces`.
+1. Serving: Serving consists of two parts - a serving infrastructure (that we call 'writer') that runs the LLM and so converts prompts to Panza outputs, and an `interface`, which presents the outputs in a useful form - through a command-line interface, a web interface, a gmail client, or in a bulk `.json` format (useful for evaluation). The configs for serving are in `panza_writer.yaml`, and for the interfaces, under `configs/interfaces`.
 
 <!-- 💬 -->
 These scripts are described in more detail in `scripts/README.md`, but a few customizations need to happen immediately.
