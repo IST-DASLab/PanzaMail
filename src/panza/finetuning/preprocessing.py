@@ -33,7 +33,8 @@ def panza_preprocessing_function(inputs: Dict) -> Dict:
         chat_prompt = tokenizer.apply_chat_template(conversation, tokenize=False)
 
         # Identify the index where the response begins
-        response_begin_index = chat_prompt.index(inputs["email"])
+        # Some tokenizers remove whitespace when applying chat template.
+        response_begin_index = chat_prompt.index(inputs["email"].strip())
 
         # Split the full prompt into prompt and response
         prompt = chat_prompt[:response_begin_index]
