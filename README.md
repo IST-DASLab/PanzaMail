@@ -138,7 +138,7 @@ cd scripts
 ### Step 2: Extract emails
 <!-- **Step 2: Extract emails** -->
 
-1. Run `CUDA_VISIBLE_DEVICES=X ./prepare_data.sh`.<details>
+Run `CUDA_VISIBLE_DEVICES=X ./prepare_data.sh`.<details>
     <summary> This scripts takes care of all the prerequisites before training (expand for details). </summary>
 
     - Extracts your emails in text format to `data/<username>_clean.jsonl` which you can manually inspect.
