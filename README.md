@@ -60,18 +60,17 @@ The overall structure of Panza is as follows:
 
 ## Installation
 
-### Conda
-1. Make sure you have a version of [conda](https://docs.anaconda.com/free/miniconda/miniconda-install/) installed.
-2. Create a new conda environment named 'panza' (or something else) and activate it:
-``` bash
+### Environment.
+1. We tested Panza using python 3.10. If you are running a different version, you can either install it directly or, for instance, using [miniconda](https://docs.anaconda.com/free/miniconda/miniconda-install/):
+```bash
 conda create -n panza python=3.10 -y
 conda activate panza
 ```
-3. Install the required packages:
+1. Install the required packages:
 ``` bash
 pip install .
 ```
-4. If you want to also finetune models using Panza, you will need to install the additional packages:
+If you want to also finetune models using Panza, you will need to install additional packages:
 ``` bash
 pip install .[training]
 ```
@@ -106,6 +105,7 @@ To quickly get started with building your own personalized email assistant, foll
 At the end of this step you should have the downloaded emails placed inside `data/Sent.mbox`.
 
 <!-- **Step 0: Environment configuration** -->
+
 ### Step 1: Environment configuration
 
 <!-- 🎛️ -->
@@ -113,14 +113,14 @@ Panza is configured through a set of yaml configurations defined in `configs/`. 
 Note that these task-specific configs can, in some cases, be used to override base configs.
  Specific use cases, such as hyperparameter tuning, are covered in more detail in `scripts/README.md`.
 
-1. Data preparation: `configs/data_preparation.yaml`. Additionally, a custom user config must be added under `config/users/` (see below).
+1. Data preparation: `configs/data_preparation.yaml`. Additionally, a custom user config must be created under `config/users/` (see below).
 1. Finetuning: the main config is in `configs/panza_finetuning.yaml` and the method-specific ones are in `configs/finetuning/`
 1. Serving: Serving consists of two parts - a serving infrastructure (that we call 'writer') that runs the LLM and so converts prompts to Panza outputs, and an `interface`, which presents the outputs in a useful form - through a command-line interface, a web interface, a gmail client, or in a bulk `.json` format (useful for evaluation). The configs for serving are in `panza_writer.yaml`, and for the interfaces, under `configs/interfaces`.
 
 <!-- 💬 -->
 These scripts are described in more detail in `scripts/README.md`, but a few customizations need to happen immediately.
 :warning: Before continuing, make sure you complete the following setup:
-- Copy `users/default.yaml` to `users/[YOURNAME].yaml`. If this is skipped, perform the following modifications on `users/default.yaml` directly. A useful tip for choosing the name of `[YOURNAME]` is to set it to the output of `whoami`. If you modify the default yaml, you will need specify `user=default` as an extra flag in the succeeding steps.
+- Perform the following modifications on `users/default.yaml` directly. If running Panza for multiple users, copy this file to, for example, `users/jen.yaml` and specify the user in Panza training commands.
 - In the user config, set the email address and username. The email address should be the sender address in the exported emails. (Panza uses this to edit out responses and other emails sent by a different author in the `.mbox` dump.). The username does not have to link to the email itself - it is simply used as a name for the various data files that will come out of the data preparation process. A handy way to set this is if you set it to be the output of the `whoami` call in your shell.
 - Modify the personal prompt in `prompt_preambles/user_preamble.txt` to include some basic information about yourself that Panza can use to customize your emails with your correct full name, address, phone number, etc.
   
@@ -198,26 +198,15 @@ On a smaller GPU, it may be necessary to further train in lower precision (QRoSA
 ### Step 5: Launch Panza!
 <!-- **Step 5: Launch Panza!** -->
 
-- To run Panza after a full training run, run a command like `CUDA_VISIBLE_DEVICES=0 ./runner.sh user=USERNAME interfaces=cli writer/llm=transformers checkpoint=latest`.
+- To run Panza after a full training run, run a command like `CUDA_VISIBLE_DEVICES=0 ./runner.sh user=USERNAME interfaces=cli writer/llm=transformers model=latest`.
 - To run Panza after a RoSA or LoRA training run, replace `writer/llm=transformers` with `writer/llm=peft`
-
-<!-- For in depth customization of each step of the pipeline, refer to ... -->
-### :new: Use Panza in Google Chrome directly with your Gmail!
-In addition to the Panza package itself, we have also created a tool that will allow you to use Panza directly within your Gmail session. We have published
-this extension on [Google Chrome here](https://chromewebstore.google.com/detail/panzaextension/njmkmdbgneiaoahngollkmejoinnaicm?authuser=4&hl=en). Here is a written guide on how to get this setup below.
-
-* Launch the Panza web server: Instead of using the cli as an interface above, we execute the following command: `CUDA_VISIBLE_DEVICES=0 API_KEYS=panza_beta ./runner.sh user=USERNAME interfaces=web writer/llm=peft checkpoint=latest`.
-
-  1. We have to choose an API key that the server will use. Since the browser extension we have created is a beta release, the API_KEY by default is `panza_beta`.
-  2. Executing this script spins up a web server on port 5001 by default. The port can be changed in the `configs/interfaces/web.json` file. However, our browser extension sends API requests to `localhost:5001` only in this beta version.
-* [Optionally add port forwarding] If you are not running the Panza web server on the same device where Google Chrome is installed, you will be unable to make requests to a server with a reference to `localhost`. To correctly use the server, you will have to enable port forwarding from the remote machine to your local device. This is done by VSCode automatically if you are SSH'ed into a remote server, and spin up Panza there.
-* Install the [Google Chrome extension here](https://chromewebstore.google.com/detail/panzaextension/njmkmdbgneiaoahngollkmejoinnaicm?authuser=4&hl=en).
-
-Now we that we have setup all the necessary pieces to use Panza, you can use it directly within your Gmail. To do so, simply write a prompt in the main message box, and click the Panza icon in the tool bar (as seen in the GIF below), and let Panza take care of the rest!
 
 <img src="panza_ext.gif" width="600" height="600"/>
 
 :email: **Have fun with your new email writing assistant!** :email:
+
+<!-- For in depth customization of each step of the pipeline, refer to ... -->
+
 
 ## :microscope: Advanced usage
 - [Inference on CPU with Ollama](./scripts/README.md#cpu-inference-with-ollama)
