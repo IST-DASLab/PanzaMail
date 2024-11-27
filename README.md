@@ -201,6 +201,7 @@ On a smaller GPU, it may be necessary to further train in lower precision (QRoSA
 - To run Panza after a full training run, run a command like `CUDA_VISIBLE_DEVICES=0 ./runner.sh user=USERNAME interfaces=cli writer/llm=transformers model=latest`.
 - To run Panza after a RoSA or LoRA training run, replace `writer/llm=transformers` with `writer/llm=peft`
 
+<img src="panza_ext.gif" width="600" height="600"/>
 
 :email: **Have fun with your new email writing assistant!** :email:
 
