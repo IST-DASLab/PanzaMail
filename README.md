@@ -61,12 +61,12 @@ The overall structure of Panza is as follows:
 ## Installation
 
 ### Environment.
-1. We tested Panza using python 3.10. If you are running a different version, you can either install it directly or, for instance, using [miniconda](https://docs.anaconda.com/free/miniconda/miniconda-install/):
+We tested Panza using python 3.10. If you are running a different version, you can either install it directly or, for instance, using [miniconda](https://docs.anaconda.com/free/miniconda/miniconda-install/):
 ```bash
 conda create -n panza python=3.10 -y
 conda activate panza
 ```
-1. Install the required packages:
+Then, Install the required packages:
 ``` bash
 pip install .
 ```
