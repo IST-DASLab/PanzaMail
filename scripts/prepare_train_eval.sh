@@ -10,10 +10,7 @@
 set -e
 
 vars=()
-# Set a default for the required user argument. We'll override it
-# later if provided.
-vars[1]=$"user=$(whoami)"
-idx=2
+idx=1
 
 # process input arguments
 training_mode="tbd" # training_mode to be determined later.
@@ -21,11 +18,7 @@ test_split="0"
 for argument in "$@"
 do
     key=$(echo $argument | cut -f1 -d=)
-    if [[ $key == user ]]; then
-    # We already set the default value here; change it now.
-        vars[1]=$argument
-        echo "Overriding user to be ${argument#*=}"
-    elif [[ $key == test_split ]]; then
+    if [[ $key == test_split ]]; then
         test_split=${argument#*=}
         echo "Setting the test_split to ${test_split}"
     elif [[ $key == finetuning ]]; then

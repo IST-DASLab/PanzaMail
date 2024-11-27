@@ -9,20 +9,14 @@
 set -e
 
 vars=()
-# Set a default for the required user argument. We'll override it
-# later if provided.
-vars[1]=$"user=$(whoami)"
-idx=2
+idx=1
 
 # process input arguments
 for argument in "$@"
 do
    key=$(echo $argument | cut -f1 -d=)
    
-   if [[ $key == user ]]; then
-    # We already set the default value here; change it now.
-    vars[1]=$argument
-   elif [[ $key == finetuning ]]; then
+   if [[ $key == finetuning ]]; then
     echo "The 'finetuning' argument is already set and should not be overridden here; override is ignored."
    elif [[ $key == finetuning.rosa.masks_only ]]; then
     echo "The 'finetuning.rosa.masks_only' argument is already set and should not be overridden here; override is ignored."
