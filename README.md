@@ -4,6 +4,12 @@
 
 #  Panza: A personal email assistant, trained and running on-device
 
+
+<a target="_blank" href="https://lightning.ai/maddox-j/studios/panzamail-demo">
+  <img src="https://pl-bolts-doc-images.s3.us-east-2.amazonaws.com/app-2/studio-badge.svg" alt="Open In Studio"/>
+</a>
+
+
 ##  What is Panza?
 
 
