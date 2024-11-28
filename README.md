@@ -218,7 +218,7 @@ this extension on [Google Chrome here](https://chromewebstore.google.com/detail/
 * Install the [Google Chrome extension here](https://chromewebstore.google.com/detail/panzaextension/njmkmdbgneiaoahngollkmejoinnaicm?authuser=4&hl=en).
 Now we that we have setup all the necessary pieces to use Panza, you can use it directly within your Gmail. To do so, simply write a prompt in the main message box, and click the Panza icon in the tool bar (as seen in the GIF below), and let Panza take care of the rest!
 
-<img src="panza_ext.gif" width="600" height="600"/>
+<img src="panza_ext.gif" width="400" height="400"/>
 
 :email: **Have fun with your new email writing assistant!** :email:
 
