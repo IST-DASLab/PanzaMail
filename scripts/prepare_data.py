@@ -103,7 +103,7 @@ def split_and_write_data(cfg):
         else:
             raise ValueError("Invalid split type.")
 
-        train_size = int(len(data) * 1 - cfg.test_split)
+        train_size = int(len(data) * (1 - cfg.test_split))
 
         with open(os.path.join(cfg.user.data_dir, "train.jsonl"), "w") as f:
             for i in range(train_size):
