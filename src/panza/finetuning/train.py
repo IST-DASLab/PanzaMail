@@ -279,18 +279,17 @@ def build_composer_peft_model(
         compute_dtype = torch.float32
         quant_config = None
 
-    with init_empty_weights(include_buffers=False):
-        model = AutoModelForCausalLM.from_pretrained(
-            model_config.pretrained_model_name_or_path,
-            device_map="cpu" if quant_config is None else "auto",
-            torch_dtype=compute_dtype,
-            # load_in_4bit=weight_bias_dtype == '4bit',
-            quantization_config=quant_config,
-            trust_remote_code=True,
-            use_auth_token=True,
-            use_cache=False,
-            attn_implementation="eager",
-        )
+    model = AutoModelForCausalLM.from_pretrained(
+        model_config.pretrained_model_name_or_path,
+        device_map="cpu" if quant_config is None else "auto",
+        torch_dtype=compute_dtype,
+        # load_in_4bit=weight_bias_dtype == '4bit',
+        quantization_config=quant_config,
+        trust_remote_code=True,
+        use_auth_token=True,
+        use_cache=False,
+        attn_implementation="eager",
+    )
 
     print("Model built!")
     if rosa_config is not None:
