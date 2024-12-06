@@ -34,4 +34,4 @@ def load_vector_db_from_disk(
         print("Faiss index loaded ")
         return db
     except Exception as e:
-        print("Fiass index loading failed \n", e)
+        print("Faiss index loading failed \n", e)

@@ -136,11 +136,6 @@ def main(cfg: DictConfig) -> None:
     writer: PanzaWriter = hydra.utils.instantiate(cfg.writer)
     assert isinstance(writer, PanzaWriter), "Failed to instantiate PanzaWriter"
 
-    # Instantiate retriever
-    retriever: DocumentRetriever = hydra.utils.instantiate(cfg.retriever)
-    assert isinstance(retriever, DocumentRetriever), "Failed to instantiate DocumentRetriever"
-    retriever.set_document_class(Email)
-
     # Load documents
     documents = load_documents(cfg.cleaned_emails_path)
     generate_synthetic_instructions(

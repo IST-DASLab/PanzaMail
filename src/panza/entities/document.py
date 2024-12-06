@@ -1,7 +1,7 @@
 import copy
 import json
 from abc import ABC, abstractmethod
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, fields
 from datetime import datetime
 from typing import Dict, List, Optional, Union
 
@@ -64,7 +64,9 @@ class Email(Document):
             dictionary["date"] = datetime.min
         else:
             dictionary["date"] = datetime.fromisoformat(dictionary["date"])
-        return cls(**dictionary)
+        # Clean out all unexpected keys from input dictionary to avoid errors with dataclass.
+        field_names = set(f.name for f in fields(Email))
+        return cls(**{k: v for k, v in dictionary.items() if k in field_names})
 
     @staticmethod
     def process(documents: List["Email"], chunk_size, chunk_overlap) -> List[Document]:
