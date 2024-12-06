@@ -714,7 +714,6 @@ def main(cfg: DictConfig) -> Trainer:
             device_train_batch_size,
         )
     except Exception as e:
-        print("I am I here")
         if mosaicml_logger is not None:
             mosaicml_logger.log_exception(e)
         raise e

@@ -54,7 +54,9 @@ class FaissRetriever(DocumentRetriever):
             LOGGER.info(f"Loaded Faiss index {index_name} from {db_path}.")
             return db
         except Exception as e:
-            LOGGER.error(f"Failed to load Faiss index {index_name} from {db_path}. Error: {e}")
+            LOGGER.error(
+                f"Failed to load Faiss index {index_name} from {db_path}. Error: {e}\nPLEASE NOTE: if you have RAG enabled in training or inference, and do not have the Faiss index, you will fail."
+            )
 
     def retrieve(self, query: str, k: int, score: Optional[float] = None) -> List[Document]:
         results = self.retrieve_with_score(query, k, score)
