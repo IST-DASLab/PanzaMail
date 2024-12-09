@@ -864,6 +864,13 @@ def main(cfg: DictConfig) -> Trainer:
     if eval_first and trainer.state.timestamp.batch.value == 0:
         trainer.eval()
 
+    # Do manual overwriting of the masks directory if they already exist.
+    if rosa_config is not None:
+        if rosa_config["mask_save_path"] and rosa_config["masks_only"]:
+            if os.path.exists(rosa_config["mask_save_path"]):
+                print("Overwriting Masks")
+                shutil.rmtree(rosa_config["mask_save_path"])
+
     log.info("Starting training...")
     trainer.fit()
 
@@ -881,7 +888,7 @@ def main(cfg: DictConfig) -> Trainer:
     # if rosa is enabled, save the model manually, since
     # llm-foundry's checkpointing doesn't work properly with RoSA
     if rosa_config is not None:
-        assert fsdp_config is None, "fsdp is cuurently not supported with RoSA"
+        assert fsdp_config is None, "fsdp is currently not supported with RoSA"
         path_to_save = os.path.join(hf_save_path, run_name)
         print(f"saving the model to {path_to_save}")
         if torch.distributed.get_rank() == 0:
