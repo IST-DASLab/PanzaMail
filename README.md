@@ -29,7 +29,7 @@ Its main features are as follows:
 
 ## Prerequisites
 - Your emails, exported to `mbox` format (see tutorial below).
-- A computer, preferably with a NVIDIA GPU with at least 24 GiB of memory (alternatively, check out [running in Google Colab](#cloud-try-out-panza-in-google-colab)).
+- A computer, preferably with a NVIDIA GPU with at least 24 GiB of memory (alternatively, check out [our Lightning AI notebook](https://lightning.ai/maddox-j/studios/panzamail-demo)).
 - A Hugging Face [account](https://huggingface.co/login) to download the models (free of charge).
 - [Optional] A Weights & Biases [account](https://wandb.ai/login) to log metrics during training (free of charge).
 - Basic Python and Unix knowledge, such as building environments and running python scripts.

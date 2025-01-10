@@ -3,10 +3,12 @@
 Hello there! Thank you for agreeing, and taking the time, to take part in this user study for our new tool, Panza: a personal email assistant, trained and running on-device. In this user study, we wish to perform some experiments that will evaluate 1) whether Panza can produce emails that are convincingly in your own voice, and 2) whether this tool would provide benefit to your daily email generation workflow (we refer to this as 'usefulness' in our work).  In order to evaluate this, we will ask you to download your personal emails from Gmail which will be used to fine-tune various model configurations. Once these models have been trained, you will be asked to score their outputs in specific settings. These ratings will then be used as part of our larger evaluation for our work. 
 
 If you choose to take part in this user study, you are consenting to the following:
-- Downloading your personal email data to fine-tune LLMs.
+- Downloading your personal email data to fine-tune LLMs. This will be stored locally on your own machine provided you have access to a NVIDIA GPU, or it will be uploaded to a Lightning AI studio.
 - Providing access to your model evaluations, whose prompts and responses may leak sensitive information (you are able to sanitise this). This will be visible to the experimenting team only, and not shared or used for any other purposes other than the evaluation itself.
 
-Naturally, at any point, if you wish to withdraw your participation in this study, you simply need to email the organising team at TODO: email address. Any information linked to your involvement in the study will be detailed, and will not be used for any further investigations.
+Naturally, at any point, if you wish to withdraw your participation in this study, you simply need to email the organising team. Any information linked to your involvement in the study will be detailed, and will not be used for any further investigations.
+
+Please read through all of the instructions before starting the evaluation. 
 
 ##  Context on the Proposed Application
 
@@ -15,7 +17,7 @@ Panza is an automated email assistant customized to your writing style and past 
 Its main features are as follows: 
 * Panza produces a fine-tuned LLM that matches your writing style, pairing it with a Retrieval-Augmented Generation (RAG) component which helps it produce relevant emails.
 * Panza **can be trained and run entirely locally**. Currently, it requires a single GPU with
-16-24 GiB of memory, but we also plan to release a CPU-only version. **At no point in training or execution is your data shared with the entities that trained the original LLMs, with LLM distribution services such as Huggingface, or with us.**
+16-24 GiB of memory. **At no point in training or execution is your data shared with the entities that trained the original LLMs, with LLM distribution services such as Huggingface, or with us.**
 * Training and execution are also quick - for a dataset on the order of 1000 emails, training Panza takes well under an hour, and generating a new email takes a few seconds at most.
 
 <div align="center">
@@ -63,6 +65,12 @@ In order to successfully take part in this user study, you will need access to t
 ## Setting Up The User Study Environment.
 ### Step 1: Cloning the repository
 The first step to creating your user study environment is to download the following repository (https://github.com/IST-DASLab/PanzaMail) to the device where you are conducting the user study. **NB:** Please make sure that you change the directory from `main` to `human-eval` as this is where we have added all the neccessary instructions for this user study.
+
+This can be done by executing the following command:
+```
+git fetch
+git switch human-eval
+```
 
 ### Step 2: Environment.
 We tested Panza using python 3.10. If you are running a different version, you can either install it directly or, for instance, using [miniconda](https://docs.anaconda.com/free/miniconda/miniconda-install/):
@@ -165,11 +173,17 @@ When you have finished preprocessing your emails, you will find your emails cont
 
 In these experiments, you will be fine-tuning a `Llama-3-8B` base model. These will be based on default hyperparameter settings that we have found to bring about the best performance experimentally. This fine-tuning procedure will be enhanced by a RAG component, which retrieves query-related emails to  provides additional conext to the LLM at train.
 
+Before we begin, we need to ensure that the following two settings:
+1. In `configs/writer/prompting/email_prompting.yaml`, please set `rag_prob:0.55`.
+1. In the same file, please set `number_rag_emails` and `number_thread_emails` to `2`.
+
 #### Step 3.1: Fine-tuning with RoSA
 For parameter efficient fine-tuning, run `./train_rosa.sh`
 
 #### Step 3.2: Full Fune-tuning
-In order to perform fine-tuning is possible, run `./train_fft.sh`.
+In order to perform fine-tuning is possible, run `./train_fft.sh`. 
+
+**NB:** It is likely that you will need to have access to more than one GPU to support the memory requirements of the FFT of Llama-3-8B. If you do not have access to this, please consider using Lightning AI.
 
 <details>
     <summary> FAQs. </summary>
@@ -189,8 +203,12 @@ Once the training processes have completed, you will find the two models in the 
 ## :open_book: Conducting the user study - Usefulness.
 Provided that you have produced your two FFT and RoSA models, we are ready to begin with the evaluation of the usefulness of Panza. In this section, we will be conducting two types of evaluations. In both cases, you will be asked to evaluate Panza's generation quality for usefulness across 16 prompt/Panza response pairs. The first experiment will generate responses to 16 hand-constructed prompts, where as the second experiment will generate responses to 16 randomly selected prompts from the user's held-out set. In addition to the fine-tuned models, you will evaluate the performance of a Llama3-8B-Instruct checkpoint for consistancy.
 
+Before we begin, we need to ensure that the following two settings:
+1. In `configs/writer/prompting/email_prompting.yaml`, please set `rag_prob:1.0`.
+1. In the same file, please set `number_rag_emails` and `number_thread_emails` to `3`.
+
 ### How does the experiment work?
-For each experiment, you will be asked to to execute a certain script that will perform the model's inference step according to the respective prompt class. The resulting prompts and responses are outputted in the form of a `.csv` file at the following directory: TODO. Once generated, we recommend that this data is uploaded into Google sheets for ease of use (we advise making the cells larger and wrapping the text (format -> wrapping -> wrap)). Once this has been completed, please rate the email outputs. The rating scale is as follows. Please use your own best judgment for what exactly minor/nontrivial changes mean to you:
+For each experiment, you will be asked to to execute a certain script that will perform the model's inference step according to the respective prompt class. The resulting prompts and responses are outputted in the form of a `.csv` file at `human_eval` directory. Once generated, we recommend that this data is uploaded into Google sheets for ease of use (we advise making the cells larger and wrapping the text (format -> wrapping -> wrap)). Once this has been completed, please rate the email outputs. The rating scale is as follows. Please use your own best judgment for what exactly minor/nontrivial changes mean to you:
 ```
 3: Very useful: would send as-is or with minor changes
 
@@ -198,48 +216,68 @@ For each experiment, you will be asked to to execute a certain script that will 
 
 1: Not useful: needs a complete rewrite
 ```
-Once this has been completed, please sanitise and anonymise the prompts and Panza response for any sensitive information, and fill in the following anonymouse Google form, which is to be submitted at the end of the user study.
+Once this has been completed, please sanitise and anonymise the prompts and Panza response for any sensitive information which is to be submitted at the end of the user study.
 
 ### Experiment 1: Fixed Prompts
 
 #### FFT Model
-In order to run the fixed prompt model evaluation with the FFT model, please execute:
+In order to run the fixed prompt model evaluation with the FFT model, please execute (**NB:** ensure that `eval_type` in `configs/interfaces/human_eval.yaml` is set to `fixed`.):
 ```
-todo
+./runner.sh interfaces=human_eval writer/llm=transformers checkpoint=[path_to_fft_folder]
 ```
 
 #### RoSA Model
 In order to run the fixed prompt model evaluation with the RoSA model, please execute:
 ```
-todo
+./runner.sh interfaces=human_eval writer/llm=peft checkpoint=[path_to_rosa_folder]
 ```
 
 #### Llama-3-8B Model
 In order to run the fixed prompt model evaluation with the Llama-3-8B model, please execute:
 ```
-todo
+./runner.sh interfaces=human_eval writer/llm=transformers checkpoint=ISTA-DASLab/Meta-Llama-3-8B-Instruct
 ```
 
 ### Experiment 2: User-Generated Prompts
 
 #### FFT Model
-In order to run the user-generated prompt model evaluation with the FFT model, please execute:
+In order to run the user-generated prompt model evaluation with the FFT model, please execute (**NB:** ensure that `eval_type` in `configs/interfaces/human_eval.yaml` is set to `own`.):
 ```
-todo
+./runner.sh interfaces=human_eval writer/llm=transformers checkpoint=[path_to_fft_folder]
 ```
 
 #### RoSA Model
 In order to run the user-generated prompt model evaluation with the RoSA model, please execute:
 ```
-todo
+./runner.sh interfaces=human_eval writer/llm=peft checkpoint=[path_to_rosa_folder]
 ```
 
 #### Llama-3-8B Model
 In order to run the user-generated prompt model evaluation with the Llama-3-8B model, please execute:
 
 ```
-todo
+./runner.sh interfaces=human_eval writer/llm=transformers checkpoint=ISTA-DASLab/Meta-Llama-3-8B-Instruct
 ```
+### Completing the Rating
+Once you have generated all of the `.csv` files, you are ready to export them to Google Sheets to preform the rating task. Please ensure that the prompts for each of the model outputs in each task category are the same. Additionaly, please save all of your ratings in one excel spreadsheet, where each sheet is a separate task. Once this has been completed, please anonymise and sanitise your outputs for any sensitive information that you do not wish to be shared, and share a link to the sheet with the organising team.
 
-### Additional Guidance: How to setup the user study on Lightning AI?
+
+## Additional Guidance: How to setup the user study on Lightning AI?
+In the case that you do not have access to a NVIDIA GPU, we are able to provide additional support through using Lightning AI studios. This studio will provide you access to NVIDIA GPUs free-of-charge (within a credit limit) so that you can train and produce the evaluations. All that will differ from doing this on a local NVIDIA GPU is that you will upload your emails to the Lightning AI studio.
+
+As a fair note of warning: your Lightning AI credits will be used whenever the studio is running. Please do not leave the studio running when you are not using it so that you don't run out of credits prior to finishing the user study.
+
+This guidance is designed to compliment the initial user study workflow. Please follow the initial guidance, substituting the relevant equivalent Lightning AI instructions where necessary. 
+
+### Step 1: Setting up your Lightning AI account
+The first thing that needs to be done is that you need to setup your Lightning AI account [here](https://lightning.ai/). This may require an additional verification step, which may require you to email support@lightning.ai for resolution. Once this is done, you will have access to your account, with some addiitonal free credits that you will use to complete the user study.
+
+### Step 2: Creating the environment.
+We have prepared a default Panza environment with the following [Lightning notebook](https://lightning.ai/maddox-j/studios/panzamail-demo?section=feature). Please create a copy for yourself. Once you have done this, you will notice that there is an initial environment setup. This is not for the user study, but for a general user who wishes to test out Panza.As such, you will need to resume your environemnt installation as per the instructions detailed [here](#setting-up-the-user-study-environment). Of course, the repository has already been cloned for you. Additionally, you will likely have to preform all the steps for this user study through the terminal window, downloading the `.csv` files locally for ease of use.
+
+### Step 3: Transferring your email data to Lightning AI
+In [this section](#step-0-download-your-sent-emails), you are required to download your emails in `.mbox` format, and place these within the `data` directory. An additional step is needed here with Lightning AI as you need to upload this `.mbox` file to the remote studio. There are few options to do so, which are detailed at [the following resource](https://lightning.ai/docs/overview/studios/drive#upload-data). Please follow this guidance to successfully upload your data to the Lightning AI studio.
+
+### Step 4: Training the Models
+By default, the Lightning AI studio is setup with a single L40 GPU. This is sufficient to train the Llama-3-8B model using RoSA. Unfortunately, there is not enough memory to support full fine-tuning. To support this use case, we can choose a beefier GPU by selecting our GPU tuype at the top of the right hand bar once our environment is active. Please select the 4xL40 machine as this will have sufficient memory to support the training. As a word of warning: this incurs a larger credit cost when compared to the single L40 machine. As before, please be mindful of how you are allocating your credit budget. In particular, we would suggest only using the 4xL40 machine for the training of the FFT model, and potentially the generation of the evaluation `.csv` for that particular configuration. Everything else should be done either on the 1xL40 machine, or locally so as to save the credit budget.
 

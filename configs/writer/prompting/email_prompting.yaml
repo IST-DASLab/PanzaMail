@@ -8,8 +8,8 @@ user_preamble: ${load_user_preamble:${user.user_preamble_path}}
 rag_preamble: ${load_preamble:${user.rag_preamble_path}}
 thread_preamble: ${load_preamble:${user.thread_preamble_path}}
 
-number_rag_emails: 2
+number_rag_emails: 3
 rag_relevance_threshold: 0.2
-number_thread_emails: 2
+number_thread_emails: 3
 seed: ${seed}
-rag_prob: 0.55
+rag_prob: 1.0 # Make rag_prob default to 1.0, but override in the training scripts.
