@@ -1,4 +1,5 @@
 from typing import List, Tuple
+import random
 
 from ..entities import Email, EmailInstruction
 from ..retriever import DocumentRetriever
@@ -17,6 +18,8 @@ class EmailPromptBuilder(PromptBuilder):
         number_rag_emails: int,
         rag_relevance_threshold: float,
         number_thread_emails: int,
+        seed: int,
+        rag_prob: float,
     ):
         self.retriever = retriever
         self.system_preamble = system_preamble
@@ -26,7 +29,8 @@ class EmailPromptBuilder(PromptBuilder):
         self.number_rag_emails = number_rag_emails
         self.rag_relevance_threshold = rag_relevance_threshold
         self.number_thread_emails = number_thread_emails
-
+        self.rag_prob = rag_prob
+        random.seed(seed)
         self.retriever.set_document_class(Email)
 
     def _create_rag_preamble_from_emails(self, emails: List[Email]) -> str:
@@ -107,9 +111,13 @@ class EmailPromptBuilder(PromptBuilder):
             raise ValueError("Thread preamble format must be provided if thread is used.")
 
         if self.number_rag_emails > 0:
-            relevant_emails = self.retriever.retrieve(
-                instruction.instruction, self.number_rag_emails, self.rag_relevance_threshold
-            )
+            if random.random() > self.rag_prob:
+                # We are randomly choosing to skip RAG.
+                relevant_emails = []
+            else:
+                relevant_emails = self.retriever.retrieve(
+                    instruction.instruction, self.number_rag_emails, self.rag_relevance_threshold
+                )
             rag_prompt = self._create_rag_preamble_from_emails(relevant_emails).strip()
         else:
             rag_prompt = ""

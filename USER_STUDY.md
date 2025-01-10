@@ -1,0 +1,245 @@
+# Panza User Study
+
+Hello there! Thank you for agreeing, and taking the time, to take part in this user study for our new tool, Panza: a personal email assistant, trained and running on-device. In this user study, we wish to perform some experiments that will evaluate 1) whether Panza can produce emails that are convincingly in your own voice, and 2) whether this tool would provide benefit to your daily email generation workflow (we refer to this as 'usefulness' in our work).  In order to evaluate this, we will ask you to download your personal emails from Gmail which will be used to fine-tune various model configurations. Once these models have been trained, you will be asked to score their outputs in specific settings. These ratings will then be used as part of our larger evaluation for our work. 
+
+If you choose to take part in this user study, you are consenting to the following:
+- Downloading your personal email data to fine-tune LLMs.
+- Providing access to your model evaluations, whose prompts and responses may leak sensitive information (you are able to sanitise this). This will be visible to the experimenting team only, and not shared or used for any other purposes other than the evaluation itself.
+
+Naturally, at any point, if you wish to withdraw your participation in this study, you simply need to email the organising team at TODO: email address. Any information linked to your involvement in the study will be detailed, and will not be used for any further investigations.
+
+##  Context on the Proposed Application
+
+### What is Panza?
+Panza is an automated email assistant customized to your writing style and past email history. \
+Its main features are as follows: 
+* Panza produces a fine-tuned LLM that matches your writing style, pairing it with a Retrieval-Augmented Generation (RAG) component which helps it produce relevant emails.
+* Panza **can be trained and run entirely locally**. Currently, it requires a single GPU with
+16-24 GiB of memory, but we also plan to release a CPU-only version. **At no point in training or execution is your data shared with the entities that trained the original LLMs, with LLM distribution services such as Huggingface, or with us.**
+* Training and execution are also quick - for a dataset on the order of 1000 emails, training Panza takes well under an hour, and generating a new email takes a few seconds at most.
+
+<div align="center">
+  <img src="panza_demo.gif" alt="panza logo" width="500"/>
+</div>
+
+## How does Panza work?
+
+### :film_projector: Step 1: Data playback
+
+For most email clients, it is possible to download a user's past emails in a machine-friendly .mbox format. For example, GMail allows you to do this via [Google Takeout](https://takeout.google.com), whereas Thunderbird allows one to do this via various plugins. 
+
+One key part of Panza is a dataset-generation technique we call **data playback**:  Given some of your past emails in .mbox format, we automatically create a training set for Panza by using a pretrained LLM to summarize the emails in instruction form; each email becomes a `(synthetic instruction, real email)` pair.
+Given a dataset consisting of all pairs, we use these pairs to "play back" your sent emails: the LLM receives only the instruction, and has to generate the "ground truth" email as a training target.
+
+We find that this approach is very useful for the LLM to "learn" the user's writing style.
+
+
+### :weight_lifting: Step 2: Local Fine-Tuning via Robust Adaptation (RoSA)
+
+We then use parameter-efficient finetuning to train the LLM on this dataset, locally. We found that we get the best results with the [RoSA method](https://arxiv.org/pdf/2401.04679.pdf), which combines low-rank (LoRA) and sparse finetuning. If parameter efficiency is not a concern, that is, you have a more powerful GPU, then regular, full-rank/full-parameter finetuning can also be used. We find that a moderate amount of further training strikes the right balance between matching the writer's style without memorizing irrelevant details in past emails.
+
+
+### :owl:	Step 3: Serving via RAG
+
+Once we have a custom user model, Panza can be run locally together with a Retrieval-Augmented Generation (RAG) module. Specifically, this functionality stores past emails in a database and provides a few relevant emails as context for each new query. This allows Panza to better insert specific details, such as a writer's contact information or frequently used Zoom links.
+
+The overall structure of Panza is as follows: 
+<div align="center">
+  <img src="panza_diagram.png" alt="panza logo" width="703" style="max-width: 100%; height: auto;"/>
+</div>
+
+
+
+## Prerequisites to complete the user study.
+In order to successfully take part in this user study, you will need access to the following: 
+
+- Your emails, exported to `mbox` format from Gmail. (see tutorial below).
+- A computer, preferably with a NVIDIA GPU with at least 24 GiB of memory (alternatively, you can perform these steps in [Lightning notebook](https://lightning.ai/maddox-j/studios/panzamail-demo?section=featured). This will require additional registration with the Lightning AI platform, for which we have provided instructions [here](#additional-guidance-how-to-setup-the-user-study-on-lightning-ai).).
+- A Hugging Face [account](https://huggingface.co/login) to download the models (free of charge).
+- [Optional] A Weights & Biases [account](https://wandb.ai/login) to log metrics during training (free of charge).
+- Basic Python and Unix knowledge, such as building environments and running python scripts.
+- *No prior LLMs experience is needed*.
+
+## Setting Up The User Study Environment.
+### Step 1: Cloning the repository
+The first step to creating your user study environment is to download the following repository (https://github.com/IST-DASLab/PanzaMail) to the device where you are conducting the user study. **NB:** Please make sure that you change the directory from `main` to `human-eval` as this is where we have added all the neccessary instructions for this user study.
+
+### Step 2: Environment.
+We tested Panza using python 3.10. If you are running a different version, you can either install it directly or, for instance, using [miniconda](https://docs.anaconda.com/free/miniconda/miniconda-install/):
+```bash
+conda create -n panza python=3.10 -y
+conda activate panza
+```
+Then, Install the required packages:
+``` bash
+pip install .
+```
+In order to finetune models using Panza, you will need to install additional packages:
+``` bash
+pip install .[training]
+```
+
+## :rocket: Training your models on your personal data.
+
+To quickly get started with building your own personalized email assistant, follow the steps bellow:
+
+### Step 0: Download your sent emails
+<!-- **Step 1: Download your sent emails** -->
+<details>
+  <summary> Expand for detailed download instructions.</summary>
+
+  We provide a description for doing this for GMail via Google Takeout.
+
+  1. Go to [https://takeout.google.com/](https://takeout.google.com/).
+  2. Click `Deselect all`.
+  3. Find `Mail` section (search for the phrase `Messages and attachments in your Gmail account in MBOX format`).
+  4. Select it.
+  5. Click on `All Mail data included` and deselect everything except `Sent`.
+  6. Scroll to the bottom of the page and click `Next step`.
+  7. Click on `Create export`.
+  8. Wait for download link to arrive in your inbox.
+  9. Download `Sent.mbox` and place it in the `data/` directory.
+
+  For Outlook accounts, we suggest doing this via a Thunderbird plugin for exporting a subset of your email as an MBOX format, such as [this add-on](https://addons.thunderbird.net/en-us/thunderbird/addon/importexporttools-ng/).
+</details>
+
+At the end of this step you should have the downloaded emails placed inside `data/Sent.mbox`.
+
+
+### Step 1: Environment configuration
+
+<!-- 🎛️ -->
+Panza is configured through a set of yaml configurations defined in `configs/`. There is a single high-level config under `configs/base.yaml`, and the rest are organized under the main functionalities of the code.
+Note that these task-specific configs can, in some cases, be used to override base configs.
+ Specific use cases, such as hyperparameter tuning, are covered in more detail in `scripts/README.md`.
+
+1. Data preparation: `configs/data_preparation.yaml`. Additionally, a custom user config must be created under `config/users/` (see below).
+1. Finetuning: the main config is in `configs/panza_finetuning.yaml` and the method-specific ones are in `configs/finetuning/`
+1. Serving: Serving consists of two parts - a serving infrastructure (that we call 'writer') that runs the LLM and so converts prompts to Panza outputs, and an `interface`, which presents the outputs in a useful form - through a command-line interface, a web interface, a gmail client, or in a bulk `.json` format (useful for evaluation). The configs for serving are in `panza_writer.yaml`, and for the interfaces, under `configs/interfaces`.
+
+<!-- 💬 -->
+These scripts are described in more detail in `scripts/README.md`, but a few customizations need to happen immediately.
+:warning: Before continuing, make sure you complete the following setup:
+- Perform the following modifications on `users/default.yaml` directly. If running Panza for multiple users, copy this file to, for example, `users/jen.yaml` and specify the user in Panza training commands.
+- In the user config, set the email address and username. The email address should be the sender address in the exported emails. (Panza uses this to edit out responses and other emails sent by a different author in the `.mbox` dump.). The username does not have to link to the email itself - it is simply used as a name for the various data files that will come out of the data preparation process. A handy way to set this is if you set it to be the output of the `whoami` call in your shell.
+- Modify the personal prompt in `prompt_preambles/user_preamble.txt` to include some basic information about yourself that Panza can use to customize your emails with your correct full name, address, phone number, etc.
+  
+
+Additionally, please perform the following login steps to be able to download the base model. 
+  - Login to Hugging Face to be able to download pretrained models: `huggingface-cli login`.
+  - [Optional] Login to Weights & Biases to log metrics during training: `wandb login`. Then, set `wandb_disabled=false` in `configs/finetuning/base.yaml`.
+
+
+You are now ready to move to `scripts`.
+``` bash
+cd scripts
+```
+
+### Step 2: Extract emails
+<!-- **Step 2: Extract emails** -->
+
+Run `CUDA_VISIBLE_DEVICES=X ./prepare_data.sh`.<details>
+    <summary> This scripts takes care of all the prerequisites before training (expand for details). </summary>
+
+    - Extracts your emails in text format to `data/<username>_clean.jsonl` which you can manually inspect.
+    - Creates synthetic prompts for your emails as described in the [data playback](#film_projector-step-1-data-playback) section. The results are stored in `data/<username>_clean_summarized.jsonl` and you can inspect the `"summary"` field.
+    - Splits data into training and test subsets. See `data/train.jsonl` and `data/test.jsonl`.
+    - Creates a vector database from the embeddings of the training emails which will later be used for *Retrieval-Augmented Generation (RAG)*. See `data/<username>.pkl` and `data/<username>.faiss`.
+</details>
+
+**NB**: if you did not change the default configuration in `user/default.yaml` to reflect your particulars but rather created a new file, you need to add the additional flag to the above command where you specify `user=x` where your config file was named `x.yaml`.
+
+<details>
+    <summary> FAQs. </summary>
+    When running the above script, you may encounter an <code>OutOfMemoryError</code>. If this is the case, you can either:
+    <ol>
+      <li> Reduce the batch size for the data processing step. This can be found in <code>configs/panza_preparation.yaml</code>.
+      <li> Move to a machine that has more memory.
+    </ol>
+  </details>
+
+When you have finished preprocessing your emails, you will find your emails contained in two separate `json` files: `train.json` and `test.json`. At this point you will likely want to sanitise these emails (i.e. removing emails that contain sensitive data that you do not wish to appear) - this can be done by removing the corresponding row from the relevant file. Additionally, please make sure that you do not have *millions* of training examples; this will slow the traning speed significantly as there will simply be more examples to process. Based on our experimental evidence, we recommend having between 128 and 1000 sent emails as training targets. Less than 128 might cause the model to overfit, while we haven't found that more than 1000 emails help for the style transfer.
+
+### Step 3: Train a LLM on your emails
+<!-- **Step 3: Train a LLM on your emails** -->
+
+In these experiments, you will be fine-tuning a `Llama-3-8B` base model. These will be based on default hyperparameter settings that we have found to bring about the best performance experimentally. This fine-tuning procedure will be enhanced by a RAG component, which retrieves query-related emails to  provides additional conext to the LLM at train.
+
+#### Step 3.1: Fine-tuning with RoSA
+For parameter efficient fine-tuning, run `./train_rosa.sh`
+
+#### Step 3.2: Full Fune-tuning
+In order to perform fine-tuning is possible, run `./train_fft.sh`.
+
+<details>
+    <summary> FAQs. </summary>
+    The bash scripts that are used to execute the finetuning procedure assume by default that your username is what is returned by the <code>whoami</code> command. This is used to locate the name of the user configs inside the <code>configs/user</code> directory as above. If you directly modified <code>default.yaml</code>, or created another yaml file where the name of that file does not match with the output of <code>whoami</code>, there will be an error. This is an easy fix. You can either:
+    <ol>
+      <li> Change the name of the yaml file to be the output of <code>whoami</code>.
+      <li> You can override the username manually when you launch the bash script by adding <code>user=x</code> where <code>x</code> is the name of the yaml file you created. For example: <code>./train_rosa.sh user=alonso</code>
+    </ol>
+  <br>
+  If you wish to add <code>CUDA_VISIBLE_DEVICES</code> to specify a specific GPU, please add this in the shell script directly by <code>export CUDA_VISIBLE_DEVICES=x</code> where <code>x</code> is the ID of the GPU you wish to use.
+  <br><br>
+  A known issue is that when you fine-tune your model with RAG, there can be a case when the tokenization of the dataset seemingly hangs. This is due to a known bug with with HF's <code>map</code> function where <code>n_proc>1</code>. To alleviate this issue, you can set <code>torch.set_num_threads(1)</code> in <code>src/panza/finetuning/train.py</code> or set the equivalent parameter in <code>configs/finetuning/rosa.yaml</code>.
+  </details>
+
+Once the training processes have completed, you will find the two models in the `checkpoints/models/[name of experiment]` directory.
+
+## :open_book: Conducting the user study - Usefulness.
+Provided that you have produced your two FFT and RoSA models, we are ready to begin with the evaluation of the usefulness of Panza. In this section, we will be conducting two types of evaluations. In both cases, you will be asked to evaluate Panza's generation quality for usefulness across 16 prompt/Panza response pairs. The first experiment will generate responses to 16 hand-constructed prompts, where as the second experiment will generate responses to 16 randomly selected prompts from the user's held-out set. In addition to the fine-tuned models, you will evaluate the performance of a Llama3-8B-Instruct checkpoint for consistancy.
+
+### How does the experiment work?
+For each experiment, you will be asked to to execute a certain script that will perform the model's inference step according to the respective prompt class. The resulting prompts and responses are outputted in the form of a `.csv` file at the following directory: TODO. Once generated, we recommend that this data is uploaded into Google sheets for ease of use (we advise making the cells larger and wrapping the text (format -> wrapping -> wrap)). Once this has been completed, please rate the email outputs. The rating scale is as follows. Please use your own best judgment for what exactly minor/nontrivial changes mean to you:
+```
+3: Very useful: would send as-is or with minor changes
+
+2: Moderately useful: would sent only after nontrivial changes
+
+1: Not useful: needs a complete rewrite
+```
+Once this has been completed, please sanitise and anonymise the prompts and Panza response for any sensitive information, and fill in the following anonymouse Google form, which is to be submitted at the end of the user study.
+
+### Experiment 1: Fixed Prompts
+
+#### FFT Model
+In order to run the fixed prompt model evaluation with the FFT model, please execute:
+```
+todo
+```
+
+#### RoSA Model
+In order to run the fixed prompt model evaluation with the RoSA model, please execute:
+```
+todo
+```
+
+#### Llama-3-8B Model
+In order to run the fixed prompt model evaluation with the Llama-3-8B model, please execute:
+```
+todo
+```
+
+### Experiment 2: User-Generated Prompts
+
+#### FFT Model
+In order to run the user-generated prompt model evaluation with the FFT model, please execute:
+```
+todo
+```
+
+#### RoSA Model
+In order to run the user-generated prompt model evaluation with the RoSA model, please execute:
+```
+todo
+```
+
+#### Llama-3-8B Model
+In order to run the user-generated prompt model evaluation with the Llama-3-8B model, please execute:
+
+```
+todo
+```
+
+### Additional Guidance: How to setup the user study on Lightning AI?
+

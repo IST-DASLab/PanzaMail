@@ -1,0 +1,8 @@
+eval_type: "own" # Which type of eval: options are "fixed" or "own"
+responses_per_prompt: 1
+checkpoint: ${checkpoint}
+panza_workspace: ${panza_workspace}
+output_folder:  ${panza_workspace}/human_eval/
+seed: ${seed}
+batch_size: 8
+_target_: panza.interface.PanzaHumanEval
