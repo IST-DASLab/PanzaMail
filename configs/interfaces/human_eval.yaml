@@ -1,8 +1,10 @@
-eval_type: "own" # Which type of eval: options are "fixed" or "own"
+eval_type: "fixed" # Which type of eval: options are "fixed" or "own"
+mode: "rating" # Which type of mode: options are "rating" or "inference"
 responses_per_prompt: 1
 checkpoint: ${checkpoint}
 panza_workspace: ${panza_workspace}
 output_folder:  ${panza_workspace}/human_eval/
 seed: ${seed}
 batch_size: 8
+path_to_fixed_prompt: "data/fixed_prompts.txt"
 _target_: panza.interface.PanzaHumanEval

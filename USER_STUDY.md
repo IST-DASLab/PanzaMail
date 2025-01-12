@@ -3,12 +3,12 @@
 Hello there! Thank you for agreeing, and taking the time, to take part in this user study for our new tool, Panza: a personal email assistant, trained and running on-device. In this user study, we wish to perform some experiments that will evaluate 1) whether Panza can produce emails that are convincingly in your own voice, and 2) whether this tool would provide benefit to your daily email generation workflow (we refer to this as 'usefulness' in our work).  In order to evaluate this, we will ask you to download your personal emails from Gmail which will be used to fine-tune various model configurations. Once these models have been trained, you will be asked to score their outputs in specific settings. These ratings will then be used as part of our larger evaluation for our work. 
 
 If you choose to take part in this user study, you are consenting to the following:
-- Downloading your personal email data to fine-tune LLMs. This will be stored locally on your own machine provided you have access to a NVIDIA GPU, or it will be uploaded to a Lightning AI studio.
+- Downloading your personal email data to fine-tune LLMs. This will be stored locally on your own machine provided you have access to a NVIDIA GPU, or it will be uploaded to remote server/cluster.
 - Providing access to your model evaluations, whose prompts and responses may leak sensitive information (you are able to sanitise this). This will be visible to the experimenting team only, and not shared or used for any other purposes other than the evaluation itself.
 
 Naturally, at any point, if you wish to withdraw your participation in this study, you simply need to email the organising team. Any information linked to your involvement in the study will be detailed, and will not be used for any further investigations.
 
-Please read through all of the instructions before starting the evaluation. 
+Please read through all of the instructions before starting the user study. 
 
 ##  Context on the Proposed Application
 
@@ -56,7 +56,7 @@ The overall structure of Panza is as follows:
 In order to successfully take part in this user study, you will need access to the following: 
 
 - Your emails, exported to `mbox` format from Gmail. (see tutorial below).
-- A computer, preferably with a NVIDIA GPU with at least 24 GiB of memory (alternatively, you can perform these steps in [Lightning notebook](https://lightning.ai/maddox-j/studios/panzamail-demo?section=featured). This will require additional registration with the Lightning AI platform, for which we have provided instructions [here](#additional-guidance-how-to-setup-the-user-study-on-lightning-ai).).
+- Access to (likely a server) a machine, preferably with a 2xNVIDIA GPU with at least 48 GiB of memory. We have provided extra guidance on how to perform these steps best when using a remote server/cluster [here](#additional-guidance-how-to-setup-the-user-study-on-a-server).
 - A Hugging Face [account](https://huggingface.co/login) to download the models (free of charge).
 - [Optional] A Weights & Biases [account](https://wandb.ai/login) to log metrics during training (free of charge).
 - Basic Python and Unix knowledge, such as building environments and running python scripts.
@@ -85,6 +85,10 @@ pip install .
 In order to finetune models using Panza, you will need to install additional packages:
 ``` bash
 pip install .[training]
+```
+**NB:**If this command does not work, please place the following parentheses: 
+``` bash
+pip install ".[training]"
 ```
 
 ## :rocket: Training your models on your personal data.
@@ -183,7 +187,7 @@ For parameter efficient fine-tuning, run `./train_rosa.sh`
 #### Step 3.2: Full Fune-tuning
 In order to perform fine-tuning is possible, run `./train_fft.sh`. 
 
-**NB:** It is likely that you will need to have access to more than one GPU to support the memory requirements of the FFT of Llama-3-8B. If you do not have access to this, please consider using Lightning AI.
+**NB:** It is likely that you will need to have access to more than one GPU to support the memory requirements of the FFT of Llama-3-8B. If you do not have access to this, please consider using a server cluster.
 
 <details>
     <summary> FAQs. </summary>
@@ -262,22 +266,20 @@ In order to run the user-generated prompt model evaluation with the Llama-3-8B m
 Once you have generated all of the `.csv` files, you are ready to export them to Google Sheets to preform the rating task. Please ensure that the prompts for each of the model outputs in each task category are the same. Additionaly, please save all of your ratings in one excel spreadsheet, where each sheet is a separate task. Once this has been completed, please anonymise and sanitise your outputs for any sensitive information that you do not wish to be shared, and share a link to the sheet with the organising team.
 
 
-## Additional Guidance: How to setup the user study on Lightning AI?
-In the case that you do not have access to a NVIDIA GPU, we are able to provide additional support through using Lightning AI studios. This studio will provide you access to NVIDIA GPUs free-of-charge (within a credit limit) so that you can train and produce the evaluations. All that will differ from doing this on a local NVIDIA GPU is that you will upload your emails to the Lightning AI studio.
+## Additional Guidance: How to setup the user study on a server?
+In the case that you do not have access to a NVIDIA GPU locally (but rather on a cluster), we are able to provide additional support to assist you through this process. All that will differ from doing this on a local NVIDIA GPU is that you will upload your emails to the remote server.
 
-As a fair note of warning: your Lightning AI credits will be used whenever the studio is running. Please do not leave the studio running when you are not using it so that you don't run out of credits prior to finishing the user study.
+This guidance is designed to compliment the initial user study workflow. Please follow the initial guidance, substituting the relevant steps for the remote server access.
 
-This guidance is designed to compliment the initial user study workflow. Please follow the initial guidance, substituting the relevant equivalent Lightning AI instructions where necessary. 
+### Step 1: Transferring your email data to the remote server
+In [this section](#step-0-download-your-sent-emails), you are required to download your emails in `.mbox` format, and place these within the `data` directory. If you do not wish to send over the entire file, please follow the steps below.
 
-### Step 1: Setting up your Lightning AI account
-The first thing that needs to be done is that you need to setup your Lightning AI account [here](https://lightning.ai/). This may require an additional verification step, which may require you to email support@lightning.ai for resolution. Once this is done, you will have access to your account, with some addiitonal free credits that you will use to complete the user study.
+When you execute the `./prepare_data.sh` script, the first step of this process is to extract the emails from `.mbox` format so that they are readily availble as text within a larger `json` structure. In particular, this involves additional preprocessing steps such as: removing forwarded emails, emials with attachments and emails that are not written in English. The result of this process is a file titled `[username_goes_here]_clean.jsonl`, which contains all the emails that can be used further in the Panza process. 
 
-### Step 2: Creating the environment.
-We have prepared a default Panza environment with the following [Lightning notebook](https://lightning.ai/maddox-j/studios/panzamail-demo?section=feature). Please create a copy for yourself. Once you have done this, you will notice that there is an initial environment setup. This is not for the user study, but for a general user who wishes to test out Panza.As such, you will need to resume your environemnt installation as per the instructions detailed [here](#setting-up-the-user-study-environment). Of course, the repository has already been cloned for you. Additionally, you will likely have to preform all the steps for this user study through the terminal window, downloading the `.csv` files locally for ease of use.
+Instead of uploading the entire  `Sent.mbox` file, you can instead preform `./prepare_data.sh` on your local machine (this has been tried on an M-Series Mac and has worked successfully) to generate the cleaned data json file. Specifically, prior to executing the data preparation script, please update the `pause_at_extract` field in `configs/panza_preparation.yaml` to be `true`. Then you are able to execute the `./prepare_data.sh` script. You will see the resulting file in the `data` directory. This also gives you an oppertunity to manually remove entries from this `...clean.jsonl` file in the case that you find emails that you do not wish to be included in the Panza process.
 
-### Step 3: Transferring your email data to Lightning AI
-In [this section](#step-0-download-your-sent-emails), you are required to download your emails in `.mbox` format, and place these within the `data` directory. An additional step is needed here with Lightning AI as you need to upload this `.mbox` file to the remote studio. There are few options to do so, which are detailed at [the following resource](https://lightning.ai/docs/overview/studios/drive#upload-data). Please follow this guidance to successfully upload your data to the Lightning AI studio.
+To preform the experiments on the remote server, you will need to upload this `.mbox` file (or the cleaned json). This can be done using the `scp` tool. Please find additional guidance [here](https://linuxize.com/post/how-to-use-scp-command-to-securely-transfer-files/) on how to use it.
 
-### Step 4: Training the Models
-By default, the Lightning AI studio is setup with a single L40 GPU. This is sufficient to train the Llama-3-8B model using RoSA. Unfortunately, there is not enough memory to support full fine-tuning. To support this use case, we can choose a beefier GPU by selecting our GPU tuype at the top of the right hand bar once our environment is active. Please select the 4xL40 machine as this will have sufficient memory to support the training. As a word of warning: this incurs a larger credit cost when compared to the single L40 machine. As before, please be mindful of how you are allocating your credit budget. In particular, we would suggest only using the 4xL40 machine for the training of the FFT model, and potentially the generation of the evaluation `.csv` for that particular configuration. Everything else should be done either on the 1xL40 machine, or locally so as to save the credit budget.
+### Step 2: Memory needed.
+To support the training of Llama-3-8B, we require access to 1xGPU with 48 GB of memory to train the Llama-3-8B model using RoSA. Unfortunately, there is not enough memory to support full fine-tuning using one GPU. To support this use case, FFT requires two 2xGPU, each with 48 GB of memory.
 

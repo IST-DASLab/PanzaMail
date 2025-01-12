@@ -33,13 +33,19 @@ class PanzaHumanEval:
         return all_responses
 
     def write_responses_to_csv(self, prompts, results):
-        data = [{"prompt": p, "email": r, "rating": None} for p, r in zip(prompts, results)]
+        if self.mode == "rating":
+            data = [{"prompt": p, "email": r, "rating": None} for p, r in zip(prompts, results)]
+            fieldnames = ["prompt", "email", "rating"]
+        elif self.mode == "inference":
+            data = [{"prompt": p, "email": r} for p, r in zip(prompts, results)]
+            fieldnames = ["prompt", "email"]
+        else:
+            raise ValueError("This mode operation is not supported.")
         with open(
             self.output_folder / f"{os.path.basename(self.checkpoint)}_{self.eval_type}_eval.csv",
             "w",
             newline="",
         ) as f:
-            fieldnames = ["prompt", "email", "rating"]
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
             writer.writerows(data)
@@ -54,6 +60,8 @@ class PanzaHumanEval:
         seed: int,
         eval_type: str,
         batch_size: int,
+        path_to_fixed_prompt: str,
+        mode: str,
     ):
         np.random.seed(seed)  # Fix seed to ensure that we always get the same prompts
         panza_workspace = Path(panza_workspace)
@@ -62,9 +70,11 @@ class PanzaHumanEval:
         self.writer = writer
         self.checkpoint = checkpoint
         self.eval_type = eval_type
+        self.path_to_fixed_prompt = Path(path_to_fixed_prompt)
+        self.mode = mode
 
         if self.eval_type == "fixed":
-            prompt_file = panza_workspace / "src" / "panza" / "evaluation" / "fixed_prompts.txt"
+            prompt_file = panza_workspace / self.path_to_fixed_prompt
             with open(prompt_file, "r") as f:
                 prompts = [x.strip() for x in f.readlines()]
         elif self.eval_type == "own":

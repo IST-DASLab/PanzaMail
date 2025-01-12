@@ -131,7 +131,11 @@ def main(cfg: DictConfig) -> None:
             [cfg.user.email_address],
             cfg.discarded_emails_dir,
         )
-
+    if cfg.pause_at_extract:
+        LOGGER.info(
+            "Data preparation script paused after data extraction. Please update the setting in the configs to resume."
+        )
+        exit(0)
     # Instantiate Panza writer
     writer: PanzaWriter = hydra.utils.instantiate(cfg.writer)
     assert isinstance(writer, PanzaWriter), "Failed to instantiate PanzaWriter"
