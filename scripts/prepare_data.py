@@ -15,6 +15,7 @@ from panza import PanzaWriter  # The import also loads custom Hydra resolvers
 from panza.entities import Document, Email, SummarizationInstruction
 from panza.retriever import DocumentRetriever
 from panza.data_preparation.extract_emails import extract_emails
+from panza.data_preparation.prepare_raft_emails import prepare_raft_emails
 from panza.data_preparation.rag import create_vector_store
 
 LOGGER = logging.getLogger(__name__)
@@ -157,6 +158,16 @@ def main(cfg: DictConfig) -> None:
         cfg.user.username,
         cfg.rag_embedding_model,
     )
+
+    if cfg.number_rag_emails_to_cache_with_train_data > 0:
+        prepare_raft_emails(
+            os.path.join(cfg.user.data_dir, "train.jsonl"),
+            cfg.rag_embedding_model,
+            cfg.rag_db_dir,
+            cfg.user.username,
+            cfg.number_rag_emails_to_cache_with_train_data,
+            write_back_to_same_loc=True,
+        )
 
 
 if __name__ == "__main__":
