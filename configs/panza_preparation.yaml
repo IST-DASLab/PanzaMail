@@ -23,3 +23,11 @@ split_type: random # Options are 'random', 'chronological'.
 rag_embedding_chunk_size: 3000
 rag_embedding_chunk_overlap: 3000
 rag_embedding_model: "sentence-transformers/all-mpnet-base-v2"
+# For training with RAG, the relevant emails must be pre-cached, to avoid
+# the costs of dynamically loading them during the data-loading. Thus, if
+# RAG training (RAFT) is of interest, this should be set to a quite-hight 
+# number, as it acts as an upper bound on the number of RAG emails that can
+# be used during training time.
+# The actual number of RAG emails used is also bounded by the setting
+# in writer/prompting/email_prompting.
+number_rag_emails_to_cache_with_train_data: 10
