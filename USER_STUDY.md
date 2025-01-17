@@ -86,7 +86,7 @@ In order to finetune models using Panza, you will need to install additional pac
 ``` bash
 pip install .[training]
 ```
-**NB:**If this command does not work, please place the following parentheses: 
+**NB:** If this command does not work, please place the following parentheses: 
 ``` bash
 pip install ".[training]"
 ```
@@ -207,9 +207,10 @@ Once the training processes have completed, you will find the two models in the 
 ## :open_book: Conducting the user study - Usefulness.
 Provided that you have produced your two FFT and RoSA models, we are ready to begin with the evaluation of the usefulness of Panza. In this section, we will be conducting two types of evaluations. In both cases, you will be asked to evaluate Panza's generation quality for usefulness across 16 prompt/Panza response pairs. The first experiment will generate responses to 16 hand-constructed prompts, where as the second experiment will generate responses to 16 randomly selected prompts from the user's held-out set. In addition to the fine-tuned models, you will evaluate the performance of a Llama3-8B-Instruct checkpoint for consistancy.
 
-Before we begin, we need to ensure that the following two settings:
+Before we begin, we need to ensure that the following settings:
 1. In `configs/writer/prompting/email_prompting.yaml`, please set `rag_prob:1.0`.
 1. In the same file, please set `number_rag_emails` and `number_thread_emails` to `3`.
+1. In `configs/interfaces/human_eval.yaml`, `path_to_fixed_prompt` is `"data/fixed_prompts.txt"` and `mode` is `"rating"`.
 
 ### How does the experiment work?
 For each experiment, you will be asked to to execute a certain script that will perform the model's inference step according to the respective prompt class. The resulting prompts and responses are outputted in the form of a `.csv` file at `human_eval` directory. Once generated, we recommend that this data is uploaded into Google sheets for ease of use (we advise making the cells larger and wrapping the text (format -> wrapping -> wrap)). Once this has been completed, please rate the email outputs. The rating scale is as follows. Please use your own best judgment for what exactly minor/nontrivial changes mean to you:
@@ -229,7 +230,7 @@ In order to run the fixed prompt model evaluation with the FFT model, please exe
 ```
 ./runner.sh interfaces=human_eval writer/llm=transformers checkpoint=[path_to_fft_folder]
 ```
-
+**NB:** The model folders are contained in `checkpoints/models`.
 #### RoSA Model
 In order to run the fixed prompt model evaluation with the RoSA model, please execute:
 ```
@@ -265,6 +266,26 @@ In order to run the user-generated prompt model evaluation with the Llama-3-8B m
 ### Completing the Rating
 Once you have generated all of the `.csv` files, you are ready to export them to Google Sheets to preform the rating task. Please ensure that the prompts for each of the model outputs in each task category are the same. Additionaly, please save all of your ratings in one excel spreadsheet, where each sheet is a separate task. Once this has been completed, please anonymise and sanitise your outputs for any sensitive information that you do not wish to be shared, and share a link to the sheet with the organising team.
 
+## :open_book: Conducting the persona recognition study.
+Provided that you have produced your RoSA models as specified by the instructions above, we are ready to begin with how well Panza can adapt to the unique voice of the emails, and thus of the author. Specifically, for a given prompt, you will be given four candidate responses: two from real individuals who are familiar with one another, one from an individual not known by the participant and an untrained Llama-3-8B model. Your task will be to indentify which response belongs to which *author*; this will be repeated for a selection of 24 custom prompts.
+
+To create the necessary information for this study, we will ask you to perform inference with your local model on the set of the 24 custom prompts. Once this is done, you will be asked to send the output `csv` file as is to the experiment organisers *without* looking at the model outputs. This decision is made by design (you cannot see your own emails as you will be asked identify them). The prompts are designed such that they will likely not generate any sensitive content. In the case that this occurs, the experimenting team will clean this for you.
+
+### Pre-experiment Setup
+In order to perform the inference needed, we need to adjust some of the configuration files. In `configs/interfaces/human_eval.yaml`, please change the following configurations:
+1. `eval_type` to `"fixed"`
+1. `mode` to `"inference"`
+1. `path_to_fixed_prompt` `"data/custom_prompts.txt"`
+1. Please also alter your `prompt_preambles/user_preambles.txt` text to be: "My name is John Smith". This is to ensure that across all participants in the study, we are using the same personal information at inference, thus preventing an arbitrary signal for personal identification. **NB:** Please store/remember what your original prompt preable was; you will need this in the next set of experiments.
+
+Additionally, for the sake of neatness, please move the previous `.csv` files into a seperate subsirectory (e.g. `usefulness/`).
+
+### Running the inference step
+In order to generate the output need for this experiment, please execute the following command:
+```
+./runner.sh interfaces=human_eval writer/llm=peft checkpoint=[path_to_rosa_folder]
+```
+Once this step has been completed, please send the output `.csv` file to the organising team and await further instruction to perform the rating task.
 
 ## Additional Guidance: How to setup the user study on a server?
 In the case that you do not have access to a NVIDIA GPU locally (but rather on a cluster), we are able to provide additional support to assist you through this process. All that will differ from doing this on a local NVIDIA GPU is that you will upload your emails to the remote server.
