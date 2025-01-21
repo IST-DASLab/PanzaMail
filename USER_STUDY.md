@@ -73,10 +73,16 @@ git switch human-eval
 ```
 
 ### Step 2: Environment.
-We tested Panza using python 3.10. If you are running a different version, you can either install it directly or, for instance, using [miniconda](https://docs.anaconda.com/free/miniconda/miniconda-install/):
+We tested Panza using python 3.10. If you are running a different version, you can either install it directly or, for instance, using [micromamba](https://mamba.readthedocs.io/en/latest/installation/micromamba-installation.html). We provide the instructions for installing this user environment below:
 ```bash
-conda create -n panza python=3.10 -y
-conda activate panza
+"${SHELL}" <(curl -L micro.mamba.pm/install.sh)
+micromamba activate 
+micromamba install python=3.10
+```
+You may also want to add `micromamba activate` to your `/.bashrc` script. Once this is done, please execute
+```bash
+micromamba create -n panza python=3.10 -y
+micromamba activate panza
 ```
 Then, Install the required packages:
 ``` bash
@@ -286,6 +292,60 @@ In order to generate the output need for this experiment, please execute the fol
 ./runner.sh interfaces=human_eval writer/llm=peft checkpoint=[path_to_rosa_folder]
 ```
 Once this step has been completed, please send the output `.csv` file to the organising team and await further instruction to perform the rating task.
+
+## :open_book: Conducting the impersonation study.
+The final user study that we will ask you to perform is our impersonation study. We posit that while Panza can be used to improve email generation productivity, it can also be used for nefarious means. Specifically, an adversary, with access to your email history (through a data leak, or perhaps by scraping content from social media), can train an Panza model to impersionate your voice. The adversary can then use this agent to request sensitive information from people connceted to you given that can convincingly produce content that is very similar to what you would have written yourself.
+
+In this user study, we attempt to answer: i) whether this is indeed the case, and ii) how many emails are needed to do this convincingly. The user study is structured as follows:
+1. From the user's held-out test set (i.e 20% of all emails), we randomly sample a selection of $N$ prompts. We will set $N=20$ for our purposes.
+2. Based on draws from a random probability distribution, we will divide the data into four groups to generate responses (**NB:** There emails are not partitioned equally into the four groups, and there is no predefined order in which they will be presented).
+    1. Group 1: The responses for this group of emails will simply be the actual gold responses written by that individual.
+    1. Group 2: The responses of this group of emails will be the outputs of a high-volume Panza model.
+    1. Group 3: The responses of this group of emails will be the outputs of an untrained Llama-3-8B model.
+    1. Group 4: The responses of this group of emails will be the outputs of a low-volume Panza model.
+1. Once the inference procedure has been performed, you will be given a chance to sanitise and anonymise the prompts/outputs to remove any information you do not want to be shared.
+1. Once the final outputs have been determined, the `.csv` file containing these responses will be sent to a collague of yours who has familiarity with your writing style. They will then be asked to rate each of the prompt/response pairs on the following scale (please write the corresponding number and not the words):
+    1. Suspicious: likely written by a bot or a stranger
+    1. Credible: the email sounds like something XXX would have written, where XXX is the participant.
+1. Finally, we will evaluate the emails per response group to determine how (un)convincing they were.
+
+### Pre-Experiment Setup: High Volume Model
+To complete this study, we once again need to change a few configurations. Namely:
+1. In `configs/interfaces/human_eval.yaml`, please change the following configurations:
+    1. `eval_type` to `"impersonation"`
+    1. `mode` to `"rating"`
+1. In `configs/writer/prompting/email_prompting.yaml` please edit `number_thread_emails` and `number_rag_emails` to be `0`.
+1. Please revert the `prompt_preambles/user_preamble.txt` to what you had used originally (i.e. your personal user prompt).
+
+As before, for the sake of neatness, please move the previous `.csv` files into a seperate subsirectory (e.g. `persona_recognition/`).
+
+### Part 1: Generating High Volume Model and Llama Responses
+To execute the inference portion of the study, please execute the following commands:
+```
+./runner.sh interfaces=human_eval writer/llm=peft checkpoint=[path_to_rosa_folder]
+./runner.sh interfaces=human_eval writer/llm=transformers checkpoint=ISTA-DASLab/Meta-Llama-3-8B-Instruct
+```
+### Part 2: Low Volume Model Responses
+This experiment has a little bit more setup than previous user studies. We want to examine whether the impersonation capabilities of Panza transfer to a *low-data* regime, namely where you have access to only $75$ emails from your history. 
+
+To begin this process, please do the following steps:
+1. To create your $75$ email dataset, please go to the data directory (i.e `cd ../data` in you are in `scripts`) and execute: `shuf -n 75 train.jsonl > train_75.jsonl`.
+1. Once this is done, please change the `train_loader.data_files` field to be `${user.data_dir}/train_75.jsonl` in `configs/finetuning/base.yaml`.
+1. Becuase of this change, we need to train the model for a few more epochs. Please change `max_duration` in `configs/finetuning/rosa.yaml` to be `11ep`
+1. As in the previous experiment, please ensure that your `prompt_preambles/user_preamble.txt` text is the one that you have personally created, and not "My name is John Smith".
+
+Once this has been done, we need to reain a new RoSA model. Please `cd ../scrips` and execute:
+```
+./train_rosa.sh
+```
+This will create a new low-data regime model. The output name is very similar to the previous model except the duration for which it was trained. Please look out for this when copying the model name for inference.
+
+Now we are ready to complete the inference step with the low-data regime model.
+
+```
+./runner.sh interfaces=human_eval writer/llm=peft checkpoint=[path_to_rosa_folder]
+```
+This will generate the relevant `.csv` file in the `human_eval` directory. Please sanitise the output, and send over the file to the experiment organisers. Please await further instruction.
 
 ## Additional Guidance: How to setup the user study on a server?
 In the case that you do not have access to a NVIDIA GPU locally (but rather on a cluster), we are able to provide additional support to assist you through this process. All that will differ from doing this on a local NVIDIA GPU is that you will upload your emails to the remote server.

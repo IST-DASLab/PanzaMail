@@ -56,37 +56,48 @@ class PanzaHumanEval:
 
     def generate_impersonation_study(self, batch_size, responses_per_prompt):
         if os.path.exists(self.output_file):
-            # The output file exists, we simply need to fill in group 3 responses.
+            # The output file exists, we need to fill in the responses.
             prompts = []
             responses = []
             to_generate = []
             with open(self.output_file, "r") as f:
                 lines = list(csv.reader(f))
             lines = lines[1:]  # Skip header
+            group_limit = self.impersonation_examples // self.impersonation_num_groups
             for line in lines:
                 prompt = line[0]
                 prompts.append(prompt)
                 response = line[1]
                 if response != "TODO":
-                    responses.append(line[1])
+                    responses.append(response)
                 else:
                     to_generate.append(prompt)
+            groups_left = len(to_generate) // self.impersonation_num_groups
+            to_generate = to_generate[:group_limit]
             responses.extend(
                 self.generate_responses_to_prompts(to_generate, batch_size, responses_per_prompt)
             )
+            if groups_left > 1:
+                responses.extend(["TODO" for _ in range(group_limit)])
             return prompts, responses
         else:
             # The output file does not exist. Generate prompt groups and fill in groups 1 and 2.
             prompt_file = self.panza_workspace / "data" / "test.jsonl"
             with open(prompt_file, "r") as f:
+                # Sample 20 prompts from the test data
                 sampled_prompts = np.random.choice(
-                    [json.loads(x) for x in f.readlines()], 30, replace=False
+                    [json.loads(x) for x in f.readlines()],
+                    self.impersonation_examples,
+                    replace=False,
                 )
             random_prompt_indices = np.arange(len(sampled_prompts))
             np.random.shuffle(random_prompt_indices)
             random_prompt_indices = list(random_prompt_indices)
-            group_number = 3
-            grouped_indices = [random_prompt_indices[x::group_number] for x in range(group_number)]
+            # We have four groups
+            grouped_indices = [
+                random_prompt_indices[x :: self.impersonation_num_groups]
+                for x in range(self.impersonation_num_groups)
+            ]
             prompts = []
             responses = []
             for idx, group_idxs in enumerate(grouped_indices):
@@ -131,6 +142,8 @@ class PanzaHumanEval:
         self.writer = writer
         self.mode = mode
         self.path_to_fixed_prompt = Path(path_to_fixed_prompt)
+        self.impersonation_examples = 20
+        self.impersonation_num_groups = 4
 
         if self.eval_type == "impersonation":
             self.output_file = self.output_folder / f"{self.username}_{self.eval_type}_eval.csv"
