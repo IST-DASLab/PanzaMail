@@ -334,7 +334,7 @@ To begin this process, please do the following steps:
 1. Becuase of this change, we need to train the model for a few more epochs. Please change `max_duration` in `configs/finetuning/rosa.yaml` to be `11ep`
 1. As in the previous experiment, please ensure that your `prompt_preambles/user_preamble.txt` text is the one that you have personally created, and not "My name is John Smith".
 
-Once this has been done, we need to reain a new RoSA model. Please `cd ../scrips` and execute:
+Once this has been done, we need to reain a new RoSA model. Please `cd ../scripts` and execute:
 ```
 ./train_rosa.sh
 ```
