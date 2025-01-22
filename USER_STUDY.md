@@ -305,8 +305,8 @@ In this user study, we attempt to answer: i) whether this is indeed the case, an
     1. Group 4: The responses of this group of emails will be the outputs of a low-volume Panza model.
 1. Once the inference procedure has been performed, you will be given a chance to sanitise and anonymise the prompts/outputs to remove any information you do not want to be shared.
 1. Once the final outputs have been determined, the `.csv` file containing these responses will be sent to a collague of yours who has familiarity with your writing style. They will then be asked to rate each of the prompt/response pairs on the following scale (please write the corresponding number and not the words):
-    1. Suspicious: likely written by a bot or a stranger
-    1. Credible: the email sounds like something XXX would have written, where XXX is the participant.
+    1. Suspicious: likely written by a bot or a stranger (indicated by a label of 1)
+    1. Credible: the email sounds like something XXX would have written, where XXX is the participant (indicated by a label of 0).
 1. Finally, we will evaluate the emails per response group to determine how (un)convincing they were.
 
 ### Pre-Experiment Setup: High Volume Model
