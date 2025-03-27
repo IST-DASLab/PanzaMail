@@ -4,11 +4,15 @@
 
 #  Panza: A personal email assistant, trained and running on-device
 
-
+Train Panza on your own data for free with a Lightning Studios account here:
 <a target="_blank" href="https://lightning.ai/maddox-j/studios/panzamail-demo">
   <img src="https://pl-bolts-doc-images.s3.us-east-2.amazonaws.com/app-2/studio-badge.svg" alt="Open In Studio"/>
 </a>
 
+Interact with Panza models we trained on our test datasets here:
+<a target="_blank" href="https://colab.research.google.com/drive/1PSHt189LbdfKQWpZRn4G6_yd4Hqs9Lgl?usp=sharing#scrollTo=t2Ek6GGxu9PI">
+  <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/>
+</a>
 
 ##  What is Panza?
 
