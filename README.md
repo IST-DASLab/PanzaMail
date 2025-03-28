@@ -14,7 +14,7 @@ Interact with Panza models we trained on our test datasets here:
   <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/>
 </a>
 
-Access our datasets here:
+Our datasets are also available on Huggingface:
 <a target="_blank" href="https://huggingface.co/datasets/ISTA-DASLab/Panza-emails">
   <img src="https://huggingface.co/datasets/huggingface/badges/resolve/main/dataset-on-hf-md.svg" alt="Dataset on HF"/>
 </a>
