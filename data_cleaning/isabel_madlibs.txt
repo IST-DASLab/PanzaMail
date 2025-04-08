@@ -1,0 +1,106 @@
+## BACKSTORY
+
+I am [A1] [A2]. I am a 30-something year old woman who moved from [G4], [G5] to [G15], [G3]. I am a web developer
+who also organizes talks as a hobby. I work at [C7] and my boss's name is [P20] [L20]. My partner is [P24] [L24] and
+we have a kid, [P15] and a cat, [P28].
+
+
+## MADLIBS
+
+# People
+A1 -> Isabel  # Author first name
+A2 -> Perez # Author last name
+P1 -> Mira  # Old friend, F
+P2 -> Rachel # Business acquaintance
+P3 -> Maria  # Friend and coworker, F
+P4 -> Anna  # Friend and coworker, F 
+P5 -> John # Business acquaintance
+P6 -> Sam # Business acquaintance
+P7 -> Rosalie # Former coworker
+P8 -> Jack # Former coworker
+P9 -> Svetlana # Former coworker
+L9 -> Ivanova 
+P10 -> Chris # Business acquaintance
+P11 -> Maryem # Business acquaintance
+P12 -> Rick # Friend
+P13 -> Katie # Friend's kid
+P14 -> Maria # Coworker
+P15 -> Cassie # Child, F
+P16 -> Zoey # Business acquaintance
+P17 -> Robert # Former boss, M
+P18 -> Penny # Former boss's kid
+P19 -> Adam # Former boss, M
+P20 -> Andrew # Current boss, M
+L20 -> Leedy
+P21 -> Pat # Former boss, M
+L21 -> Schneider
+P22 -> Amanda # Business acquaintance
+P23 -> Shannon # Business acquaintance
+P24 -> Gael # Partner, M
+L24 -> Richards
+P25 -> Nora # Business acquaintance
+P26 -> Ethan # Former coworker
+P27 -> Amy # Friend
+P28 -> Petra # Cat
+P29 -> Helga # Business acquaintance
+P30 -> Raul # Business acquaintance
+P49 -> Luke # Friend
+P31 -> Reece  # Friend
+P33 -> Alex # Business acquaintance
+P34 -> Michelle # Business acquaintance
+P35 -> Nancy # Business acquaintance
+P36 -> Zach # Business acquaintance
+P37 -> Andrea # Sister
+P38 -> Scott # Former coworker
+P39 -> Mary # Family member, F
+P40 -> Boris # Business acquaintance
+#P41 -> Marcus # Business acquaintance
+#P42 -> Leslie # Friend
+P41 -> Mike # Former teacher
+#P42 -> Henry # Friend
+P43 -> Allie # Friend
+P44 -> Gretchen # Friend
+P45 -> Tom # Friend
+P46 -> Max # Friend
+P47 -> Agatha # Former coworker
+#P48 -> Sean # Friend's kid
+
+# Businesses
+C2 -> Innoviarty # Future employer
+C3 -> WorkTogether # #Employer
+C4 -> GoodCo 
+C5 -> Rosalia
+C7 -> Helco # Employer
+C9 -> DUDUM # 
+C10 -> Meowcor # Former employer
+#C11 -> PopCom # Former employer
+C12 -> MBIB # Partner's employer
+
+# Places and languages
+G1 -> San Antonio # Lived there briefly
+G2 -> Vietnam
+G3 -> Barbados # Moving to/moved to there
+GL3 -> Portuguese  # Language I'm learning in G3
+G15 -> Bridgetown # City I am moving to/moved to in G3
+G16 -> 37 Shore Road # Current address
+G4 -> Memphis  # City; Used to live there
+G12 -> Nashville # City; Used to live there
+G5 -> Tennessee # Where G4 and G12 are located
+G6 -> Portland # City; Used to live there
+G7 -> Iceland # Country
+G8 -> Korea # Country where parents live
+G9 -> Seoul # City in G8
+#G10 -> Egypt # Country where family lives
+G14 -> Cairo # City where I visited
+G11 -> Malmo # City
+D2 -> Polish # Language I speak
+G13 -> Poland # Country I don't live in but whose language I speak
+GL4 -> Croatian # Language some of my family speaks
+
+# Things
+C6 -> Ethical AI # Group I run
+#I1 -> ecology
+C8 -> crobot # Website I built
+T1 -> website uptime dashboard
+C13 -> VisUS # Project I worked on
+D1 -> (374) 974-9986 # My phone number
