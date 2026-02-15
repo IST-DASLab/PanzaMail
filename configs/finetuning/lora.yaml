@@ -1,0 +1,24 @@
+defaults:
+  - base
+
+max_duration: 5ep
+lr: 1e-5
+batch_size: 8
+eval_interval: 1
+seed: ${seed}
+model_name_or_path: "ISTA-DASLab/Meta-Llama-3-8B-Instruct"
+save_merged_model: False
+
+lora:
+  lora_lr: ${finetuning.lr}
+  r: 8
+  lora_alpha: 16
+  target_modules: all-linear
+  lora_dropout: 0.05
+  bias: none
+  task_type: CAUSAL_LM
+
+scheduler:
+  t_warmup: 8ba
+
+num_cpu_threads: 1
