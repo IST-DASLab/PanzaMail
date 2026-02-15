@@ -17,6 +17,7 @@ This directory contains all scripts necessary to train and run Panza. We provide
 
 #### Training
 * `train_rosa.sh` performs [parameter-efficient training](https://arxiv.org/pdf/2401.04679.pdf). 
+* `train_lora.sh` performs standard LoRA parameter-efficient training directly through Hugging Face Transformers (no RoSA masks/sparsity and no llm-foundry/composer dependency).
 * `train_fft.sh` performs full-parameter/full-rank training. _Note that this requires additional computational resources (about 2x)._ 
 
 
@@ -70,6 +71,10 @@ and
 ```bash
 pip install panza_mail[training]
 
+```
+For standard LoRA-only fine-tuning without RoSA/spops dependencies, install:
+```bash
+pip install panza_mail[training_lora]
 ```
 
 #### Inference

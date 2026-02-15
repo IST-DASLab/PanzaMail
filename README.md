@@ -87,6 +87,10 @@ If you want to also finetune models using Panza, you will need to install additi
 ``` bash
 pip install .[training]
 ```
+For standard LoRA-only fine-tuning without RoSA/spops dependencies, install:
+``` bash
+pip install .[training_lora]
+```
 
 ## :rocket: Getting started
 
@@ -177,7 +181,8 @@ Run `CUDA_VISIBLE_DEVICES=X ./prepare_data.sh`.<details>
 
 We currently support `LLaMA3-8B-Instruct` and `Mistral-Instruct-v0.2` LLMs as base models; the former is the default, but we obtained good results with either model.   
 
-1. [Recommended] For parameter efficient fine-tuning, run `./train_rosa.sh`.  
+1. [Recommended] For parameter efficient fine-tuning, run `./train_rosa.sh`.
+If you want standard LoRA only (no RoSA sparse masks, no spops, no llm-foundry/composer), run `./train_lora.sh`.
 If a larger GPU is available and full-parameter fine-tuning is possible, run `./train_fft.sh`.
 
 2. We have prepopulated the training configs with parameter values that worked best for us. We recommend you try those first, but you can also experiment with different hyper-parameters by passing extra arguments to the training script, such as `lr`, `lora_lr`, `num_epochs`. All the trained models are saved in the `checkpoints` directory.
@@ -187,6 +192,8 @@ Examples:
 CUDA_VISIBLE_DEVICES=X ./train_rosa.sh                                   # Will use the default parameters.
 
 CUDA_VISIBLE_DEVICES=X ./train_rosa.sh finetuning.lr=1e-6 finetuning.rosa_lr=1e-6 finetuning.max_duration=7ep
+
+CUDA_VISIBLE_DEVICES=X ./train_lora.sh finetuning.lr=1e-6 finetuning.lora.lora_lr=1e-6 finetuning.max_duration=7ep
 ```
 
 On a smaller GPU, it may be necessary to further train in lower precision (QRoSA). This can be run as follows:

@@ -53,4 +53,11 @@ elif [[ $training_mode == "full" ]];  then
         echo "Generating json evaluation"
         python runner.py interfaces=json writer/llm=transformers 
     fi    
+elif [[ $training_mode == "lora" ]];  then
+    python ../src/panza/finetuning/train_lora_hf.py \
+        finetuning=lora ${vars[@]}
+    if [[ $test_split != "0" ]]; then
+        echo "Generating json evaluation"
+        python runner.py interfaces=json writer/llm=peft
+    fi
 fi

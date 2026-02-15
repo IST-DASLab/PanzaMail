@@ -12,7 +12,6 @@ import time
 import warnings
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
-import spops
 
 import torch
 from composer import Trainer
@@ -38,8 +37,7 @@ from llmfoundry.models.utils import init_empty_weights
 from llmfoundry.utils import find_mosaicml_logger, log_train_analytics, maybe_create_mosaicml_logger
 from omegaconf import DictConfig, ListConfig
 from omegaconf import OmegaConf as om
-from peft import get_peft_model
-from peft.tuners.rosa import RosaConfig, RosaModel, RosaScheduler
+from peft import LoraConfig, get_peft_model
 from rich.traceback import install
 from transformers import AutoModelForCausalLM, BitsAndBytesConfig, PreTrainedTokenizerBase
 
@@ -71,6 +69,30 @@ from omegaconf import DictConfig, OmegaConf
 from panza import PanzaWriter  # The import also loads custom Hydra resolvers
 
 log = logging.getLogger(__name__)
+
+try:
+    import spops
+except ImportError:
+    spops = None
+
+try:
+    from peft.tuners.rosa import RosaConfig, RosaModel, RosaScheduler
+except ImportError:
+    RosaConfig = None
+    RosaModel = None
+    RosaScheduler = None
+
+
+def get_adapter_type(finetuning_cfg: DictConfig) -> Optional[str]:
+    has_rosa = "rosa" in finetuning_cfg
+    has_lora = "lora" in finetuning_cfg
+    if has_rosa and has_lora:
+        raise ValueError("Only one adapter mode can be enabled at a time (choose either rosa or lora).")
+    if has_rosa:
+        return "rosa"
+    if has_lora:
+        return "lora"
+    return None
 
 
 def validate_config(cfg: DictConfig):
@@ -156,10 +178,11 @@ def create_run_name(cfg: DictConfig) -> str:
     run_name += f"-{cfg.model_precision}"
     run_name += f"-bs{cfg.finetuning.batch_size}"
 
-    if hasattr(cfg.finetuning, "rosa"):
-        run_name += "-rosa"
-    else:
+    adapter_type = get_adapter_type(cfg.finetuning)
+    if adapter_type is None:
         run_name += "-fft"
+    else:
+        run_name += f"-{adapter_type}"
 
     run_name += f"-lr{cfg.finetuning.lr}"
     run_name += f"-{cfg.finetuning.max_duration}"
@@ -234,12 +257,15 @@ def override_config(cfg: DictConfig) -> None:
     if not cfg.finetuning.run_name:
         cfg.finetuning.run_name = create_run_name(cfg)
 
-    if hasattr(cfg.finetuning, "rosa"):
+    adapter_type = get_adapter_type(cfg.finetuning)
+    if adapter_type == "rosa":
         cfg.finetuning.rosa.rosa_dtype = get_rosa_dtype(cfg)
         if cfg.finetuning.rosa.spa_d != 0:
             override_rosa_schedule(cfg, mask_generation=cfg.finetuning.rosa.masks_only)
-    else:
-        cfg.finetuning.callbacks.hf_checkpointer.precision = get_hf_save_precision(cfg)
+    elif adapter_type is None:
+        callbacks_cfg = cfg.finetuning.get("callbacks", None)
+        if callbacks_cfg is not None and "hf_checkpointer" in callbacks_cfg:
+            callbacks_cfg.hf_checkpointer.precision = get_hf_save_precision(cfg)
 
     # Re-enable struct mode to lock down the configuration
     OmegaConf.set_struct(cfg, True)
@@ -253,9 +279,10 @@ def save_config_to_yaml(cfg: DictConfig) -> str:
 
 
 def build_composer_peft_model(
-    model_config: str,
-    rosa_config: Dict[str, Any],
+    model_config: DictConfig,
     tokenizer: PreTrainedTokenizerBase,
+    rosa_config: Optional[Dict[str, Any]] = None,
+    lora_config: Optional[Dict[str, Any]] = None,
     is_fsdp: bool = False,
 ) -> ComposerHFCausalLM:
 
@@ -293,6 +320,10 @@ def build_composer_peft_model(
 
     print("Model built!")
     if rosa_config is not None:
+        if RosaConfig is None:
+            raise ImportError(
+                "RoSA fine-tuning requires peft-rosa. Install training dependencies with RoSA support."
+            )
         print("Building RoSA config...")
         config = RosaConfig(
             r=rosa_config["lora_r"],
@@ -319,6 +350,19 @@ def build_composer_peft_model(
         print("Adding RoSA modules...")
         model = get_peft_model(model, config)
         print("RoSA modules added!")
+    elif lora_config is not None:
+        print("Building LoRA config...")
+        config = LoraConfig(
+            r=lora_config.get("r", 8),
+            lora_alpha=lora_config.get("lora_alpha", 16),
+            target_modules=lora_config.get("target_modules", "all-linear"),
+            lora_dropout=lora_config.get("lora_dropout", 0.05),
+            bias=lora_config.get("bias", "none"),
+            task_type=lora_config.get("task_type", "CAUSAL_LM"),
+        )
+        print("Adding LoRA modules...")
+        model = get_peft_model(model, config)
+        print("LoRA modules added!")
 
     train_metrics = [LanguageCrossEntropy(), LanguagePerplexity()]
     eval_metrics = [
@@ -445,6 +489,11 @@ def main(cfg: DictConfig) -> Trainer:
     rosa_config: Optional[Dict[str, Any]] = pop_config(
         cfg, "rosa", must_exist=False, default_value=None, convert=True
     )
+    lora_config: Optional[Dict[str, Any]] = pop_config(
+        cfg, "lora", must_exist=False, default_value=None, convert=True
+    )
+    if rosa_config is not None and lora_config is not None:
+        raise ValueError("Both rosa and lora configs were provided. Select only one adapter mode.")
 
     hf_save_path: Union[int, str] = pop_config(cfg, "hf_save_path", must_exist=True)
 
@@ -554,7 +603,13 @@ def main(cfg: DictConfig) -> Trainer:
     if num_cpu_threads > 0:
         print(f"Setting number of CPU threads to {num_cpu_threads}")
         torch.set_num_threads(num_cpu_threads)
-        spops.set_num_threads(num_cpu_threads)
+        if rosa_config is not None:
+            if spops is None:
+                warnings.warn(
+                    "spops is not installed; skipping spops.set_num_threads for RoSA mode."
+                )
+            else:
+                spops.set_num_threads(num_cpu_threads)
 
     # Enable autoresume from model checkpoints if possible
     autoresume_default: bool = False
@@ -679,6 +734,7 @@ def main(cfg: DictConfig) -> Trainer:
     use_async_eval = any(isinstance(c, AsyncEval) for c in callbacks)
 
     print("ROSA CONFIG", rosa_config)
+    print("LORA CONFIG", lora_config)
     # Build Model
     print("Initializing model...")
     with init_context:
@@ -686,9 +742,13 @@ def main(cfg: DictConfig) -> Trainer:
             fsdp_config is None or rosa_config is None
         ), "fsdp is cuurently not supported with RoSA"
         model = build_composer_peft_model(
-            model_config, rosa_config, tokenizer, is_fsdp=fsdp_config is not None
+            model_config,
+            tokenizer,
+            rosa_config=rosa_config,
+            lora_config=lora_config,
+            is_fsdp=fsdp_config is not None,
         )
-        if rosa_config is not None:
+        if rosa_config is not None and RosaModel is not None:
             assert isinstance(model.model.base_model, RosaModel)
 
     # Algorithms
@@ -702,6 +762,10 @@ def main(cfg: DictConfig) -> Trainer:
     )
 
     if rosa_config is not None:
+        if RosaScheduler is None:
+            raise ImportError(
+                "RoSA fine-tuning requires peft-rosa. Install training dependencies with RoSA support."
+            )
         algorithms.append(RosaScheduler(model.model.base_model))
 
     # Dataloaders
@@ -776,24 +840,40 @@ def main(cfg: DictConfig) -> Trainer:
 
     # Optimizer
     optimizer_name: str = optimizer_config.pop("name")
-    if rosa_config is None or "lora_lr" not in rosa_config:
+    adapter_config = rosa_config if rosa_config is not None else lora_config
+    adapter_lr = adapter_config.get("lora_lr") if adapter_config is not None else None
+    if adapter_lr is None:
         optimizer = build_optimizer(model, optimizer_name, optimizer_config)
     else:
-        print(f'Using a different learning rate for lora params {rosa_config["lora_lr"]}')
+        print(f"Using a different learning rate for LoRA params {adapter_lr}")
         assert optimizer_name == "decoupled_adamw"
         lora_params = []
         other_params = []
+        adapter_param_keys = (
+            ["rosa_A", "rosa_B", "rosa_embedding_A", "rosa_embedding_B"]
+            if rosa_config is not None
+            else ["lora_A", "lora_B", "lora_embedding_A", "lora_embedding_B"]
+        )
         for name, param in model.named_parameters():
-            if any(
-                [k in name for k in ["rosa_A", "rosa_B", "rosa_embedding_A", "rosa_embedding_B"]]
-            ):
+            if not param.requires_grad:
+                continue
+            if any([k in name for k in adapter_param_keys]):
                 lora_params.append(param)
             else:
                 other_params.append(param)
 
-        print(f"Found {len(lora_params)} lora params and {len(other_params)} other params")
-        params = [{"params": other_params}, {"params": lora_params, "lr": rosa_config["lora_lr"]}]
-        optimizer = DecoupledAdamW(params, **optimizer_config)
+        if len(lora_params) == 0:
+            warnings.warn(
+                "No LoRA parameters were detected for split learning rates; "
+                "falling back to the base optimizer config."
+            )
+            optimizer = build_optimizer(model, optimizer_name, optimizer_config)
+        else:
+            print(f"Found {len(lora_params)} LoRA params and {len(other_params)} other params")
+            params = [{"params": lora_params, "lr": adapter_lr}]
+            if len(other_params) > 0:
+                params.insert(0, {"params": other_params})
+            optimizer = DecoupledAdamW(params, **optimizer_config)
 
     # Now add the eval metrics
     try:
@@ -878,19 +958,19 @@ def main(cfg: DictConfig) -> Trainer:
     # subdirectory that the HF writer wrote it into, and into
     # our desired and expected location. Only needed for full
     # (not low-rank) finetuning.
-    if rosa_config is None and torch.distributed.get_rank() == 0:
+    if rosa_config is None and lora_config is None and torch.distributed.get_rank() == 0:
         path_to_save = os.path.join(hf_save_path, run_name)
         hf_output_path = os.path.join(path_to_save, "huggingface")
         for filename in glob.glob(os.path.join(hf_output_path, "*", "*")):
             shutil.copy(filename, path_to_save)
         shutil.rmtree(os.path.join(hf_output_path))
 
-    # if rosa is enabled, save the model manually, since
-    # llm-foundry's checkpointing doesn't work properly with RoSA
-    if rosa_config is not None:
-        assert fsdp_config is None, "fsdp is currently not supported with RoSA"
+    # If PEFT is enabled, save adapters manually.
+    if rosa_config is not None or lora_config is not None:
+        if rosa_config is not None:
+            assert fsdp_config is None, "fsdp is currently not supported with RoSA"
         path_to_save = os.path.join(hf_save_path, run_name)
-        print(f"saving the model to {path_to_save}")
+        print(f"Saving the model to {path_to_save}")
         if torch.distributed.get_rank() == 0:
             model.model.save_pretrained(
                 path_to_save, is_main_process=True, state_dict=model.model.state_dict()
